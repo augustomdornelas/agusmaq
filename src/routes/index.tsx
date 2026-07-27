@@ -249,15 +249,14 @@ function Hero() {
       <div className="container-x relative grid gap-12 py-20 md:py-28 lg:grid-cols-12 lg:gap-8">
         <div className="lg:col-span-7">
           <p className="reveal text-xs font-semibold tracking-[0.22em] text-[#f37032]">
-            AGUDOS · SP — UMA EMPRESA DO GRUPO GRD
+            LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS · AGUDOS, SP
           </p>
           <h1 className="reveal mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
             Equipamento de quem entende de obra.
           </h1>
           <p className="reveal mt-6 max-w-2xl text-base leading-relaxed text-white/80 md:text-lg">
-            A Agusmaq aluga as mesmas máquinas que o Grupo GRD usa nos próprios canteiros —
-            revisadas antes de cada locação, com entrega em Agudos e região, para empresas e
-            pessoas físicas.
+            Máquinas revisadas antes de cada locação, com entrega em Agudos e região — para
+            construtoras, indústrias e pessoas físicas.
           </p>
           <div className="reveal mt-9 flex flex-col gap-3 sm:flex-row">
             <BtnPrimary href={WHATSAPP_URL}>
@@ -274,12 +273,7 @@ function Hero() {
             <div className="absolute -top-3 left-8 rounded-full bg-[#f37032] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
               Locação
             </div>
-            <div className="grid grid-cols-3 gap-6 text-center">
-              <Stat n="+15" label="anos no canteiro" />
-              <Stat n="6" label="famílias de equipamentos" />
-              <Stat n="24h" label="para chegar na obra" />
-            </div>
-            <div className="mt-8 rounded-xl bg-white/5 p-5">
+            <div className="rounded-xl bg-white/5 p-5">
               <p className="text-sm font-semibold text-white">
                 “Fechou hoje, retira amanhã.”
               </p>
@@ -287,6 +281,20 @@ function Hero() {
                 É esse o jeito Agusmaq de resolver. Sem letra miúda, sem espera de semana.
               </p>
             </div>
+            <ul className="mt-6 space-y-3 text-sm text-white/85">
+              <li className="flex items-start gap-3">
+                <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#f37032]" />
+                Revisão antes de cada locação
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#f37032]" />
+                Entrega e retirada na obra
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#f37032]" />
+                Diária, semanal ou mensal
+              </li>
+            </ul>
           </div>
         </div>
       </div>
@@ -294,16 +302,7 @@ function Hero() {
   );
 }
 
-function Stat({ n, label }: { n: string; label: string }) {
-  return (
-    <div>
-      <div className="text-3xl font-extrabold text-[#f37032]">{n}</div>
-      <div className="mt-1 text-[11px] font-medium uppercase tracking-wider text-white/70">
-        {label}
-      </div>
-    </div>
-  );
-}
+
 
 /* -------------------------- Trust ------------------------- */
 
