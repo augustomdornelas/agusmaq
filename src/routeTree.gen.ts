@@ -12,7 +12,18 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
+import { Route as PortalRelatoriosRouteImport } from './routes/portal.relatorios'
+import { Route as PortalManutencoesRouteImport } from './routes/portal.manutencoes'
 import { Route as PortalLoginRouteImport } from './routes/portal.login'
+import { Route as PortalEquipamentosRouteImport } from './routes/portal.equipamentos'
+import { Route as PortalDashboardRouteImport } from './routes/portal.dashboard'
+import { Route as PortalConfiguracoesRouteImport } from './routes/portal.configuracoes'
+import { Route as PortalClientesRouteImport } from './routes/portal.clientes'
+import { Route as PortalCategoriasRouteImport } from './routes/portal.categorias'
+import { Route as PortalAlugueisRouteImport } from './routes/portal.alugueis'
+import { Route as PortalEquipamentosIdRouteImport } from './routes/portal.equipamentos.$id'
+import { Route as PortalClientesIdRouteImport } from './routes/portal.clientes.$id'
+import { Route as PortalAlugueisIdRouteImport } from './routes/portal.alugueis.$id'
 
 const PortalRoute = PortalRouteImport.update({
   id: '/portal',
@@ -29,36 +40,169 @@ const PortalIndexRoute = PortalIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PortalRoute,
 } as any)
+const PortalRelatoriosRoute = PortalRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalManutencoesRoute = PortalManutencoesRouteImport.update({
+  id: '/manutencoes',
+  path: '/manutencoes',
+  getParentRoute: () => PortalRoute,
+} as any)
 const PortalLoginRoute = PortalLoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => PortalRoute,
 } as any)
+const PortalEquipamentosRoute = PortalEquipamentosRouteImport.update({
+  id: '/equipamentos',
+  path: '/equipamentos',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalDashboardRoute = PortalDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalConfiguracoesRoute = PortalConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalClientesRoute = PortalClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalCategoriasRoute = PortalCategoriasRouteImport.update({
+  id: '/categorias',
+  path: '/categorias',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalAlugueisRoute = PortalAlugueisRouteImport.update({
+  id: '/alugueis',
+  path: '/alugueis',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalEquipamentosIdRoute = PortalEquipamentosIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PortalEquipamentosRoute,
+} as any)
+const PortalClientesIdRoute = PortalClientesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PortalClientesRoute,
+} as any)
+const PortalAlugueisIdRoute = PortalAlugueisIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PortalAlugueisRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/portal': typeof PortalRouteWithChildren
+  '/portal/alugueis': typeof PortalAlugueisRouteWithChildren
+  '/portal/categorias': typeof PortalCategoriasRoute
+  '/portal/clientes': typeof PortalClientesRouteWithChildren
+  '/portal/configuracoes': typeof PortalConfiguracoesRoute
+  '/portal/dashboard': typeof PortalDashboardRoute
+  '/portal/equipamentos': typeof PortalEquipamentosRouteWithChildren
   '/portal/login': typeof PortalLoginRoute
+  '/portal/manutencoes': typeof PortalManutencoesRoute
+  '/portal/relatorios': typeof PortalRelatoriosRoute
   '/portal/': typeof PortalIndexRoute
+  '/portal/alugueis/$id': typeof PortalAlugueisIdRoute
+  '/portal/clientes/$id': typeof PortalClientesIdRoute
+  '/portal/equipamentos/$id': typeof PortalEquipamentosIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/portal/alugueis': typeof PortalAlugueisRouteWithChildren
+  '/portal/categorias': typeof PortalCategoriasRoute
+  '/portal/clientes': typeof PortalClientesRouteWithChildren
+  '/portal/configuracoes': typeof PortalConfiguracoesRoute
+  '/portal/dashboard': typeof PortalDashboardRoute
+  '/portal/equipamentos': typeof PortalEquipamentosRouteWithChildren
   '/portal/login': typeof PortalLoginRoute
+  '/portal/manutencoes': typeof PortalManutencoesRoute
+  '/portal/relatorios': typeof PortalRelatoriosRoute
   '/portal': typeof PortalIndexRoute
+  '/portal/alugueis/$id': typeof PortalAlugueisIdRoute
+  '/portal/clientes/$id': typeof PortalClientesIdRoute
+  '/portal/equipamentos/$id': typeof PortalEquipamentosIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/portal': typeof PortalRouteWithChildren
+  '/portal/alugueis': typeof PortalAlugueisRouteWithChildren
+  '/portal/categorias': typeof PortalCategoriasRoute
+  '/portal/clientes': typeof PortalClientesRouteWithChildren
+  '/portal/configuracoes': typeof PortalConfiguracoesRoute
+  '/portal/dashboard': typeof PortalDashboardRoute
+  '/portal/equipamentos': typeof PortalEquipamentosRouteWithChildren
   '/portal/login': typeof PortalLoginRoute
+  '/portal/manutencoes': typeof PortalManutencoesRoute
+  '/portal/relatorios': typeof PortalRelatoriosRoute
   '/portal/': typeof PortalIndexRoute
+  '/portal/alugueis/$id': typeof PortalAlugueisIdRoute
+  '/portal/clientes/$id': typeof PortalClientesIdRoute
+  '/portal/equipamentos/$id': typeof PortalEquipamentosIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/portal' | '/portal/login' | '/portal/'
+  fullPaths:
+    | '/'
+    | '/portal'
+    | '/portal/alugueis'
+    | '/portal/categorias'
+    | '/portal/clientes'
+    | '/portal/configuracoes'
+    | '/portal/dashboard'
+    | '/portal/equipamentos'
+    | '/portal/login'
+    | '/portal/manutencoes'
+    | '/portal/relatorios'
+    | '/portal/'
+    | '/portal/alugueis/$id'
+    | '/portal/clientes/$id'
+    | '/portal/equipamentos/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/portal/login' | '/portal'
-  id: '__root__' | '/' | '/portal' | '/portal/login' | '/portal/'
+  to:
+    | '/'
+    | '/portal/alugueis'
+    | '/portal/categorias'
+    | '/portal/clientes'
+    | '/portal/configuracoes'
+    | '/portal/dashboard'
+    | '/portal/equipamentos'
+    | '/portal/login'
+    | '/portal/manutencoes'
+    | '/portal/relatorios'
+    | '/portal'
+    | '/portal/alugueis/$id'
+    | '/portal/clientes/$id'
+    | '/portal/equipamentos/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/portal'
+    | '/portal/alugueis'
+    | '/portal/categorias'
+    | '/portal/clientes'
+    | '/portal/configuracoes'
+    | '/portal/dashboard'
+    | '/portal/equipamentos'
+    | '/portal/login'
+    | '/portal/manutencoes'
+    | '/portal/relatorios'
+    | '/portal/'
+    | '/portal/alugueis/$id'
+    | '/portal/clientes/$id'
+    | '/portal/equipamentos/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -89,6 +233,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalIndexRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/portal/relatorios': {
+      id: '/portal/relatorios'
+      path: '/relatorios'
+      fullPath: '/portal/relatorios'
+      preLoaderRoute: typeof PortalRelatoriosRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/manutencoes': {
+      id: '/portal/manutencoes'
+      path: '/manutencoes'
+      fullPath: '/portal/manutencoes'
+      preLoaderRoute: typeof PortalManutencoesRouteImport
+      parentRoute: typeof PortalRoute
+    }
     '/portal/login': {
       id: '/portal/login'
       path: '/login'
@@ -96,16 +254,130 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalLoginRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/portal/equipamentos': {
+      id: '/portal/equipamentos'
+      path: '/equipamentos'
+      fullPath: '/portal/equipamentos'
+      preLoaderRoute: typeof PortalEquipamentosRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/dashboard': {
+      id: '/portal/dashboard'
+      path: '/dashboard'
+      fullPath: '/portal/dashboard'
+      preLoaderRoute: typeof PortalDashboardRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/configuracoes': {
+      id: '/portal/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/portal/configuracoes'
+      preLoaderRoute: typeof PortalConfiguracoesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/clientes': {
+      id: '/portal/clientes'
+      path: '/clientes'
+      fullPath: '/portal/clientes'
+      preLoaderRoute: typeof PortalClientesRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/categorias': {
+      id: '/portal/categorias'
+      path: '/categorias'
+      fullPath: '/portal/categorias'
+      preLoaderRoute: typeof PortalCategoriasRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/alugueis': {
+      id: '/portal/alugueis'
+      path: '/alugueis'
+      fullPath: '/portal/alugueis'
+      preLoaderRoute: typeof PortalAlugueisRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/equipamentos/$id': {
+      id: '/portal/equipamentos/$id'
+      path: '/$id'
+      fullPath: '/portal/equipamentos/$id'
+      preLoaderRoute: typeof PortalEquipamentosIdRouteImport
+      parentRoute: typeof PortalEquipamentosRoute
+    }
+    '/portal/clientes/$id': {
+      id: '/portal/clientes/$id'
+      path: '/$id'
+      fullPath: '/portal/clientes/$id'
+      preLoaderRoute: typeof PortalClientesIdRouteImport
+      parentRoute: typeof PortalClientesRoute
+    }
+    '/portal/alugueis/$id': {
+      id: '/portal/alugueis/$id'
+      path: '/$id'
+      fullPath: '/portal/alugueis/$id'
+      preLoaderRoute: typeof PortalAlugueisIdRouteImport
+      parentRoute: typeof PortalAlugueisRoute
+    }
   }
 }
 
+interface PortalAlugueisRouteChildren {
+  PortalAlugueisIdRoute: typeof PortalAlugueisIdRoute
+}
+
+const PortalAlugueisRouteChildren: PortalAlugueisRouteChildren = {
+  PortalAlugueisIdRoute: PortalAlugueisIdRoute,
+}
+
+const PortalAlugueisRouteWithChildren = PortalAlugueisRoute._addFileChildren(
+  PortalAlugueisRouteChildren,
+)
+
+interface PortalClientesRouteChildren {
+  PortalClientesIdRoute: typeof PortalClientesIdRoute
+}
+
+const PortalClientesRouteChildren: PortalClientesRouteChildren = {
+  PortalClientesIdRoute: PortalClientesIdRoute,
+}
+
+const PortalClientesRouteWithChildren = PortalClientesRoute._addFileChildren(
+  PortalClientesRouteChildren,
+)
+
+interface PortalEquipamentosRouteChildren {
+  PortalEquipamentosIdRoute: typeof PortalEquipamentosIdRoute
+}
+
+const PortalEquipamentosRouteChildren: PortalEquipamentosRouteChildren = {
+  PortalEquipamentosIdRoute: PortalEquipamentosIdRoute,
+}
+
+const PortalEquipamentosRouteWithChildren =
+  PortalEquipamentosRoute._addFileChildren(PortalEquipamentosRouteChildren)
+
 interface PortalRouteChildren {
+  PortalAlugueisRoute: typeof PortalAlugueisRouteWithChildren
+  PortalCategoriasRoute: typeof PortalCategoriasRoute
+  PortalClientesRoute: typeof PortalClientesRouteWithChildren
+  PortalConfiguracoesRoute: typeof PortalConfiguracoesRoute
+  PortalDashboardRoute: typeof PortalDashboardRoute
+  PortalEquipamentosRoute: typeof PortalEquipamentosRouteWithChildren
   PortalLoginRoute: typeof PortalLoginRoute
+  PortalManutencoesRoute: typeof PortalManutencoesRoute
+  PortalRelatoriosRoute: typeof PortalRelatoriosRoute
   PortalIndexRoute: typeof PortalIndexRoute
 }
 
 const PortalRouteChildren: PortalRouteChildren = {
+  PortalAlugueisRoute: PortalAlugueisRouteWithChildren,
+  PortalCategoriasRoute: PortalCategoriasRoute,
+  PortalClientesRoute: PortalClientesRouteWithChildren,
+  PortalConfiguracoesRoute: PortalConfiguracoesRoute,
+  PortalDashboardRoute: PortalDashboardRoute,
+  PortalEquipamentosRoute: PortalEquipamentosRouteWithChildren,
   PortalLoginRoute: PortalLoginRoute,
+  PortalManutencoesRoute: PortalManutencoesRoute,
+  PortalRelatoriosRoute: PortalRelatoriosRoute,
   PortalIndexRoute: PortalIndexRoute,
 }
 
