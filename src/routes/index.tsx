@@ -572,17 +572,17 @@ function About() {
           </h2>
           <div className="mt-8 space-y-5 text-base leading-relaxed text-white/85">
             <p>
-              A Agusmaq nasceu dentro do <strong className="font-semibold">Grupo GRD</strong>,
-              empresa de projetos e construções de Agudos (SP). Antes de virar locadora, o
-              parque de máquinas foi montado para atender as próprias obras — e isso muda tudo.
+              A Agusmaq é de Agudos (SP) e nasceu do lado de dentro da obra. Nosso parque de
+              máquinas foi montado para atender canteiro de verdade — e continua sendo mantido
+              por quem sabe o que uma obra parada custa.
             </p>
             <p>
-              As máquinas são mantidas por quem depende delas todos os dias. Quando você aluga
-              da Agusmaq, aluga o mesmo equipamento que a nossa equipe leva para o próprio
-              canteiro.
+              Cada equipamento passa por revisão antes de sair para locação. É simples: a
+              máquina que a gente aluga é a máquina que a gente confiaria no nosso próprio
+              serviço.
             </p>
             <p>
-              O nome vem daí:{" "}
+              O nome diz a origem:{" "}
               <span className="font-semibold text-white">AGUS</span> de Agudos,{" "}
               <span className="font-semibold text-[#f37032]">MAQ</span> de máquinas.
             </p>
@@ -600,23 +600,21 @@ function About() {
               loading="lazy"
             />
             <div className="mt-8 h-px w-full bg-[#eef0f4]" />
-            <div className="mt-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#213368] text-xs font-bold text-white">
-                GRD
+            <div className="mt-6 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#213368] text-lg font-extrabold text-white">
+                A
               </div>
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-[#6e7280]">
-                  Selo
-                </div>
                 <div className="text-sm font-semibold text-[#1a1a1a]">
-                  Uma empresa do Grupo GRD
+                  De Agudos para a região
+                </div>
+                <div className="text-sm text-[#6e7280]">
+                  Entrega e retirada na sua obra
                 </div>
               </div>
             </div>
-            <p className="mt-6 text-xs leading-relaxed text-[#6e7280]">
-              Grupo GRD — Projetos e Construções. Agudos, SP.
-            </p>
           </div>
+
         </div>
       </div>
     </section>
