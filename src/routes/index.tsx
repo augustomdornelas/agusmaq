@@ -764,9 +764,10 @@ function Footer() {
       <div className="border-t border-white/10">
         <div className="container-x flex flex-col items-start justify-between gap-3 py-6 text-xs text-white/60 md:flex-row md:items-center">
           <p>
-            Agusmaq é uma marca do Grupo GRD — GRD Projetos e Construções Ltda. · CNPJ
+            Agusmaq Locações e Equipamentos · GRD Projetos e Construções Ltda. · CNPJ
             00.000.000/0001-00
           </p>
+
           <p>© {new Date().getFullYear()} Agusmaq. Todos os direitos reservados.</p>
         </div>
       </div>
