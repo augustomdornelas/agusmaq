@@ -117,7 +117,7 @@ interface StoreCtx {
   updateCliente: (id: UUID, patch: Partial<Cliente>) => void;
   deleteCliente: (id: UUID) => void;
   // alugueis
-  saveAluguel: (data: Omit<Aluguel, "id" | "created_at" | "updated_at" | "itens"> & { id?: UUID; itens: Omit<AluguelItem, "id" | "aluguel_id">[] }) => Aluguel;
+  saveAluguel: (data: Omit<Aluguel, "id" | "created_at" | "updated_at" | "itens"> & { id?: UUID; itens: Omit<AluguelItem, "id" | "aluguel_id" | "subtotal">[] }) => Aluguel;
   updateAluguelStatus: (id: UUID, status: Aluguel["status"], data_devolucao_real?: string | null) => void;
   cancelarAluguel: (id: UUID) => void;
   // pagamentos
