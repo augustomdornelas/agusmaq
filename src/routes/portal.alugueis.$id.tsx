@@ -26,10 +26,12 @@ function AluguelDetail() {
   if (!a) {
     return <PortalLayout title="Aluguel"><p>Aluguel não encontrado. <Link to="/portal/alugueis" className="underline">Voltar</Link></p></PortalLayout>;
   }
-  const cli = db.clientes.find(c => c.id === a.cliente_id);
-  const pagamentos = db.pagamentos.filter(p => p.aluguel_id === a.id);
+  const aluguel = a;
+  const cli = db.clientes.find(c => c.id === aluguel.cliente_id);
+  const pagamentos = db.pagamentos.filter(p => p.aluguel_id === aluguel.id);
   const pago = pagamentos.reduce((s, p) => s + p.valor, 0);
-  const saldo = Math.max(0, a.valor_total - pago);
+  const saldo = Math.max(0, aluguel.valor_total - pago);
+
 
   function registrarDevolucao() {
     if (!confirm("Confirmar devolução? Os equipamentos voltarão para 'disponível'.")) return;
