@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { signIn, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from "@/lib/portal/store";
+import { signIn } from "@/lib/portal/store";
 import logo from "@/assets/agusmaq-logo-principal.png";
 
 export const Route = createFileRoute("/portal/login")({
