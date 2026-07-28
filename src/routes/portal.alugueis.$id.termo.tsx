@@ -22,6 +22,7 @@ function TermoPage() {
   const { db } = useStore();
   const sigRef = useRef<SignatureCanvas | null>(null);
   const [sigData, setSigData] = useState<string>("");
+  const [unidadesSel, setUnidadesSel] = useState<Record<string, string[]>>({});
 
   const a = db.alugueis.find(x => x.id === id);
   if (!a) return <PortalLayout title="Termo"><p>Aluguel não encontrado.</p></PortalLayout>;
@@ -63,6 +64,42 @@ function TermoPage() {
       <div className="mb-3 flex items-center justify-between print:hidden">
         <Link to="/portal/alugueis/$id" params={{ id: a.id }} className="inline-flex items-center gap-1 text-sm text-[#6E7280] hover:text-[#213368]"><ArrowLeft className="h-4 w-4" /> Voltar</Link>
         <button onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-md bg-[#F37032] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db5f22]"><Printer className="h-4 w-4" /> Imprimir / PDF</button>
+      </div>
+
+      <div className="print:hidden mb-4 rounded-lg bg-white p-4 shadow-sm">
+        <h3 className="mb-2 text-sm font-semibold text-[#213368]">Unidades que saem (opcional)</h3>
+        <p className="mb-2 text-xs text-[#6E7280]">Marque os códigos que sairão fisicamente quando alugar menos que o total.</p>
+        <div className="space-y-2">
+          {a.itens.map(it => {
+            const eq = db.equipamentos.find(e => e.id === it.equipamento_id);
+            if (!eq) return null;
+            const codes = (eq.codigos_patrimonio && eq.codigos_patrimonio.length) ? eq.codigos_patrimonio : (eq.codigo_patrimonio ? [eq.codigo_patrimonio] : []);
+            const sel = unidadesSel[it.id] ?? (it.unidades_codigos ?? []);
+            if (codes.length <= 1) return null;
+            return (
+              <div key={it.id} className="rounded border p-2">
+                <p className="text-xs font-semibold text-[#213368]">{eq.nome} <span className="text-[#6E7280]">— {it.quantidade} un.</span></p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {codes.map(c => {
+                    const on = sel.includes(c);
+                    return (
+                      <button key={c} type="button" onClick={() => setUnidadesSel(p => {
+                        const cur = new Set(p[it.id] ?? (it.unidades_codigos ?? []));
+                        on ? cur.delete(c) : cur.add(c);
+                        return { ...p, [it.id]: Array.from(cur) };
+                      })} className={`rounded px-2 py-0.5 font-mono text-xs ${on ? "bg-[#213368] text-white" : "bg-[#213368]/10 text-[#213368]"}`}>{c}</button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          {a.itens.every(it => {
+            const eq = db.equipamentos.find(e => e.id === it.equipamento_id);
+            const codes = eq ? ((eq.codigos_patrimonio && eq.codigos_patrimonio.length) ? eq.codigos_patrimonio : (eq.codigo_patrimonio ? [eq.codigo_patrimonio] : [])) : [];
+            return codes.length <= 1;
+          }) && <p className="text-xs text-[#6E7280]">Nenhum item tem múltiplos códigos.</p>}
+        </div>
       </div>
 
       <div className="print:hidden mb-4 rounded-lg bg-white p-4 shadow-sm">
@@ -113,10 +150,13 @@ function TermoPage() {
             <tbody>
               {a.itens.map(it => {
                 const eq = db.equipamentos.find(e => e.id === it.equipamento_id);
+                const codes = eq ? ((eq.codigos_patrimonio && eq.codigos_patrimonio.length) ? eq.codigos_patrimonio : (eq.codigo_patrimonio ? [eq.codigo_patrimonio] : [])) : [];
+                const sel = unidadesSel[it.id] ?? (it.unidades_codigos ?? []);
+                const shown = sel.length ? sel : codes;
                 return (
                   <tr key={it.id}>
-                    <td className="border p-2 font-mono text-xs">{eq?.codigo_patrimonio}</td>
-                    <td className="border p-2">{eq?.nome}</td>
+                    <td className="border p-2 font-mono text-xs">{shown.join(", ") || "—"}</td>
+                    <td className="border p-2">{eq?.nome}{sel.length > 0 && sel.length < codes.length && <span className="ml-1 text-[10px] text-[#6E7280]">(unidades selecionadas)</span>}</td>
                     <td className="border p-2 text-right">{it.quantidade}</td>
                     <td className="border p-2 text-right">{money(Number(it.valor_unitario))}</td>
                     <td className="border p-2 text-right">{money(Number(it.subtotal))}</td>

@@ -40,8 +40,12 @@ function EquipamentosPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const q = busca.trim().toLowerCase();
+  function codesOf(e: Equipamento): string[] {
+    const arr = e.codigos_patrimonio && e.codigos_patrimonio.length ? e.codigos_patrimonio : (e.codigo_patrimonio ? [e.codigo_patrimonio] : []);
+    return arr;
+  }
   const filtered = useMemo(() => db.equipamentos.filter(e =>
-    !q || e.nome.toLowerCase().includes(q) || e.codigo_patrimonio.toLowerCase().includes(q)
+    !q || e.nome.toLowerCase().includes(q) || codesOf(e).some(c => c.toLowerCase().includes(q))
   ), [db.equipamentos, q]);
 
   const grupos = useMemo(() => {
@@ -109,40 +113,49 @@ function EquipamentosPage() {
               </button>
               {isOpen && (
                 <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {items.map(e => (
-                    <div key={e.id} className="group overflow-hidden rounded-lg border bg-white transition hover:shadow-md">
-                      <Link to="/portal/equipamentos/$id" params={{ id: e.id }} className="block">
-                        <div className="relative aspect-[4/3] bg-[#F4F4F4]">
-                          {e.foto_url ? (
-                            <img src={e.foto_url} alt={e.nome} className="h-full w-full object-cover" loading="lazy" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[#6E7280]">
-                              <ImageIcon className="h-10 w-10 opacity-40" />
-                            </div>
-                          )}
-                          <div className="absolute right-2 top-2"><StatusBadge status={e.status} /></div>
-                        </div>
-                      </Link>
+                  {items.map(e => {
+                    const codes = codesOf(e);
+                    const first = codes[0] || "—";
+                    const extra = Math.max(0, codes.length - 1);
+                    return (
+                    <Link
+                      key={e.id}
+                      to="/portal/equipamentos/$id"
+                      params={{ id: e.id }}
+                      className="group block overflow-hidden rounded-lg border bg-white transition hover:shadow-md hover:border-[#F37032]"
+                    >
+                      <div className="relative aspect-[4/3] bg-[#F4F4F4]">
+                        {e.foto_url ? (
+                          <img src={e.foto_url} alt={e.nome} className="h-full w-full object-cover" loading="lazy" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[#6E7280]">
+                            <ImageIcon className="h-10 w-10 opacity-40" />
+                          </div>
+                        )}
+                        <div className="absolute right-2 top-2"><StatusBadge status={e.status} /></div>
+                      </div>
                       <div className="p-3">
-                        <Link to="/portal/equipamentos/$id" params={{ id: e.id }} className="line-clamp-1 text-sm font-semibold text-[#213368] hover:underline">
-                          {highlight(e.nome)}
-                        </Link>
-                        <p className="text-xs text-[#6E7280]">{highlight(e.codigo_patrimonio || "—")}</p>
+                        <p className="line-clamp-1 text-sm font-semibold text-[#213368]">{highlight(e.nome)}</p>
+                        <p className="mt-0.5 flex items-center gap-1 text-xs text-[#6E7280]">
+                          <span className="font-mono">{highlight(first)}</span>
+                          {extra > 0 && <span className="rounded-full bg-[#213368]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#213368]">+{extra}</span>}
+                        </p>
                         <div className="mt-2 grid grid-cols-3 gap-1 text-[11px]">
                           <div className="rounded bg-[#F4F4F4] p-1 text-center"><span className="block text-[#6E7280]">Dia</span><span className="font-semibold">{money(e.valor_diaria)}</span></div>
                           <div className="rounded bg-[#F4F4F4] p-1 text-center"><span className="block text-[#6E7280]">Sem</span><span className="font-semibold">{money(e.valor_semanal)}</span></div>
                           <div className="rounded bg-[#F4F4F4] p-1 text-center"><span className="block text-[#6E7280]">Mês</span><span className="font-semibold">{money(e.valor_mensal)}</span></div>
                         </div>
                         <div className="mt-2 flex items-center justify-between text-xs">
-                          <span className="text-[#6E7280]">Qtd: <b className="text-[#1a1a1a]">{e.quantidade_total}</b></span>
+                          <span className="text-[#6E7280]">{codes.length} código{codes.length !== 1 ? "s" : ""} / qtd {e.quantidade_total}</span>
                           <div>
-                            <button onClick={() => { setEditing(e); setOpen(true); }} className="mr-2 font-medium text-[#213368] hover:underline">Editar</button>
-                            <button onClick={() => excluir(e)} className="font-medium text-red-600 hover:underline">Excluir</button>
+                            <button onClick={ev => { ev.preventDefault(); ev.stopPropagation(); setEditing(e); setOpen(true); }} className="mr-2 font-medium text-[#213368] hover:underline">Editar</button>
+                            <button onClick={ev => { ev.preventDefault(); ev.stopPropagation(); excluir(e); }} className="font-medium text-red-600 hover:underline">Excluir</button>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    </Link>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -163,10 +176,13 @@ function EquipamentosPage() {
 
 function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | null; onClose: () => void; onSave: (d: Omit<Equipamento, "id" | "created_at" | "updated_at">) => void | Promise<void> }) {
   const { db } = useStore();
+  const initialCodes = (initial?.codigos_patrimonio && initial.codigos_patrimonio.length)
+    ? [...initial.codigos_patrimonio]
+    : (initial?.codigo_patrimonio ? [initial.codigo_patrimonio] : []);
   const [f, setF] = useState({
     categoria_id: initial?.categoria_id ?? db.categorias[0]?.id ?? "",
     nome: initial?.nome ?? "",
-    codigo_patrimonio: initial?.codigo_patrimonio ?? "",
+    codigos_patrimonio: initialCodes,
     descricao: initial?.descricao ?? "",
     foto_url: initial?.foto_url ?? "",
     valor_diaria: initial?.valor_diaria ?? 0,
@@ -174,12 +190,25 @@ function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | 
     valor_mensal: initial?.valor_mensal ?? 0,
     valor_compra: initial?.valor_compra ?? 0,
     data_compra: initial?.data_compra ?? "",
-    quantidade_total: initial?.quantidade_total ?? 1,
+    quantidade_total: initial?.quantidade_total ?? Math.max(1, initialCodes.length),
     status: initial?.status ?? "disponivel" as EquipamentoStatus,
     observacoes: initial?.observacoes ?? "",
   });
+  const [chipInput, setChipInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [drag, setDrag] = useState(false);
+
+  function addChip(v: string) {
+    const val = v.trim();
+    if (!val) return;
+    if (f.codigos_patrimonio.includes(val)) { setChipInput(""); return; }
+    const next = [...f.codigos_patrimonio, val];
+    setF(p => ({ ...p, codigos_patrimonio: next, quantidade_total: Math.max(p.quantidade_total, next.length) }));
+    setChipInput("");
+  }
+  function removeChip(v: string) {
+    setF(p => ({ ...p, codigos_patrimonio: p.codigos_patrimonio.filter(c => c !== v) }));
+  }
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) return toast.error("Selecione uma imagem.");
@@ -194,10 +223,20 @@ function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | 
   }
 
   async function submit() {
-    if (!f.nome || !f.codigo_patrimonio) return toast.error("Nome e código são obrigatórios.");
-    const dup = db.equipamentos.find(e => e.codigo_patrimonio === f.codigo_patrimonio && e.id !== initial?.id);
-    if (dup) return toast.error("Código de patrimônio já existe.");
-    await onSave({ ...f, data_compra: f.data_compra || null });
+    let codes = f.codigos_patrimonio;
+    if (chipInput.trim()) codes = [...codes, chipInput.trim()];
+    if (!f.nome || codes.length === 0) return toast.error("Informe o nome e pelo menos um código.");
+    const dup = db.equipamentos.find(e => e.id !== initial?.id && (
+      codes.some(c => (e.codigos_patrimonio ?? []).includes(c) || e.codigo_patrimonio === c)
+    ));
+    if (dup) return toast.error(`Código já existe no equipamento "${dup.nome}".`);
+    await onSave({
+      ...f,
+      codigos_patrimonio: codes,
+      codigo_patrimonio: codes[0],
+      quantidade_total: Math.max(f.quantidade_total, codes.length),
+      data_compra: f.data_compra || null,
+    } as any);
   }
 
   return (
@@ -209,7 +248,29 @@ function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | 
         </div>
         <div className="grid gap-3 p-5 md:grid-cols-2">
           <F label="Nome"><input className="w-full rounded-md border px-2 py-2 text-sm" value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} /></F>
-          <F label="Código de patrimônio"><input className="w-full rounded-md border px-2 py-2 text-sm" value={f.codigo_patrimonio} onChange={e => setF({ ...f, codigo_patrimonio: e.target.value })} /></F>
+          <F label={`Códigos de patrimônio (${f.codigos_patrimonio.length} código${f.codigos_patrimonio.length !== 1 ? "s" : ""} / quantidade ${f.quantidade_total})`}>
+            <div className="flex min-h-[42px] flex-wrap items-center gap-1 rounded-md border bg-white p-1.5">
+              {f.codigos_patrimonio.map(c => (
+                <span key={c} className="inline-flex items-center gap-1 rounded bg-[#213368]/10 px-2 py-0.5 font-mono text-xs text-[#213368]">
+                  {c}
+                  <button type="button" onClick={() => removeChip(c)} className="text-[#213368] hover:text-red-600"><X className="h-3 w-3" /></button>
+                </span>
+              ))}
+              <input
+                className="min-w-[80px] flex-1 border-0 px-1 text-sm outline-none"
+                placeholder={f.codigos_patrimonio.length ? "Adicionar…" : "Ex.: GRD 156 e Enter"}
+                value={chipInput}
+                onChange={e => setChipInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addChip(chipInput); }
+                  else if (e.key === "Backspace" && !chipInput && f.codigos_patrimonio.length) {
+                    removeChip(f.codigos_patrimonio[f.codigos_patrimonio.length - 1]);
+                  }
+                }}
+                onBlur={() => chipInput && addChip(chipInput)}
+              />
+            </div>
+          </F>
           <F label="Categoria"><select className="w-full rounded-md border px-2 py-2 text-sm" value={f.categoria_id} onChange={e => setF({ ...f, categoria_id: e.target.value })}>
             {db.categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select></F>

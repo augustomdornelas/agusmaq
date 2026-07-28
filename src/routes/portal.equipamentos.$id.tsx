@@ -79,7 +79,19 @@ function EquipDetail() {
             </button>
           </div>
           <h2 className="mt-3 text-lg font-bold text-[#213368]">{e.nome}</h2>
-          <p className="text-sm text-[#6E7280]">{e.codigo_patrimonio} · {db.categorias.find(c => c.id === e.categoria_id)?.nome}</p>
+          <p className="text-sm text-[#6E7280]">{db.categorias.find(c => c.id === e.categoria_id)?.nome}</p>
+          {(() => {
+            const codes = (e.codigos_patrimonio && e.codigos_patrimonio.length) ? e.codigos_patrimonio : (e.codigo_patrimonio ? [e.codigo_patrimonio] : []);
+            if (!codes.length) return <p className="mt-2 text-xs text-[#6E7280]">Sem código cadastrado</p>;
+            return (
+              <div className="mt-2">
+                <p className="text-[10px] uppercase text-[#6E7280]">Códigos ({codes.length})</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {codes.map(c => <span key={c} className="rounded bg-[#213368]/10 px-2 py-0.5 font-mono text-xs text-[#213368]">{c}</span>)}
+                </div>
+              </div>
+            );
+          })()}
           <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
             <Info label="Diária" v={money(e.valor_diaria)} />
             <Info label="Semanal" v={money(e.valor_semanal)} />
