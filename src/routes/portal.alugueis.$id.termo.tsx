@@ -67,6 +67,42 @@ function TermoPage() {
       </div>
 
       <div className="print:hidden mb-4 rounded-lg bg-white p-4 shadow-sm">
+        <h3 className="mb-2 text-sm font-semibold text-[#213368]">Unidades que saem (opcional)</h3>
+        <p className="mb-2 text-xs text-[#6E7280]">Marque os códigos que sairão fisicamente quando alugar menos que o total.</p>
+        <div className="space-y-2">
+          {a.itens.map(it => {
+            const eq = db.equipamentos.find(e => e.id === it.equipamento_id);
+            if (!eq) return null;
+            const codes = (eq.codigos_patrimonio && eq.codigos_patrimonio.length) ? eq.codigos_patrimonio : (eq.codigo_patrimonio ? [eq.codigo_patrimonio] : []);
+            const sel = unidadesSel[it.id] ?? (it.unidades_codigos ?? []);
+            if (codes.length <= 1) return null;
+            return (
+              <div key={it.id} className="rounded border p-2">
+                <p className="text-xs font-semibold text-[#213368]">{eq.nome} <span className="text-[#6E7280]">— {it.quantidade} un.</span></p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {codes.map(c => {
+                    const on = sel.includes(c);
+                    return (
+                      <button key={c} type="button" onClick={() => setUnidadesSel(p => {
+                        const cur = new Set(p[it.id] ?? (it.unidades_codigos ?? []));
+                        on ? cur.delete(c) : cur.add(c);
+                        return { ...p, [it.id]: Array.from(cur) };
+                      })} className={`rounded px-2 py-0.5 font-mono text-xs ${on ? "bg-[#213368] text-white" : "bg-[#213368]/10 text-[#213368]"}`}>{c}</button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          {a.itens.every(it => {
+            const eq = db.equipamentos.find(e => e.id === it.equipamento_id);
+            const codes = eq ? ((eq.codigos_patrimonio && eq.codigos_patrimonio.length) ? eq.codigos_patrimonio : (eq.codigo_patrimonio ? [eq.codigo_patrimonio] : [])) : [];
+            return codes.length <= 1;
+          }) && <p className="text-xs text-[#6E7280]">Nenhum item tem múltiplos códigos.</p>}
+        </div>
+      </div>
+
+      <div className="print:hidden mb-4 rounded-lg bg-white p-4 shadow-sm">
         <h3 className="mb-2 text-sm font-semibold text-[#213368]">Assinatura digital do locatário (opcional)</h3>
         <div className="rounded border bg-white">
           <SignatureCanvas ref={sigRef} canvasProps={{ className: "w-full", height: 160 }} onEnd={salvarAssinatura} />
