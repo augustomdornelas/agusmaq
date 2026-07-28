@@ -40,8 +40,12 @@ function EquipamentosPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const q = busca.trim().toLowerCase();
+  function codesOf(e: Equipamento): string[] {
+    const arr = e.codigos_patrimonio && e.codigos_patrimonio.length ? e.codigos_patrimonio : (e.codigo_patrimonio ? [e.codigo_patrimonio] : []);
+    return arr;
+  }
   const filtered = useMemo(() => db.equipamentos.filter(e =>
-    !q || e.nome.toLowerCase().includes(q) || e.codigo_patrimonio.toLowerCase().includes(q)
+    !q || e.nome.toLowerCase().includes(q) || codesOf(e).some(c => c.toLowerCase().includes(q))
   ), [db.equipamentos, q]);
 
   const grupos = useMemo(() => {
@@ -109,40 +113,49 @@ function EquipamentosPage() {
               </button>
               {isOpen && (
                 <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {items.map(e => (
-                    <div key={e.id} className="group overflow-hidden rounded-lg border bg-white transition hover:shadow-md">
-                      <Link to="/portal/equipamentos/$id" params={{ id: e.id }} className="block">
-                        <div className="relative aspect-[4/3] bg-[#F4F4F4]">
-                          {e.foto_url ? (
-                            <img src={e.foto_url} alt={e.nome} className="h-full w-full object-cover" loading="lazy" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[#6E7280]">
-                              <ImageIcon className="h-10 w-10 opacity-40" />
-                            </div>
-                          )}
-                          <div className="absolute right-2 top-2"><StatusBadge status={e.status} /></div>
-                        </div>
-                      </Link>
+                  {items.map(e => {
+                    const codes = codesOf(e);
+                    const first = codes[0] || "—";
+                    const extra = Math.max(0, codes.length - 1);
+                    return (
+                    <Link
+                      key={e.id}
+                      to="/portal/equipamentos/$id"
+                      params={{ id: e.id }}
+                      className="group block overflow-hidden rounded-lg border bg-white transition hover:shadow-md hover:border-[#F37032]"
+                    >
+                      <div className="relative aspect-[4/3] bg-[#F4F4F4]">
+                        {e.foto_url ? (
+                          <img src={e.foto_url} alt={e.nome} className="h-full w-full object-cover" loading="lazy" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[#6E7280]">
+                            <ImageIcon className="h-10 w-10 opacity-40" />
+                          </div>
+                        )}
+                        <div className="absolute right-2 top-2"><StatusBadge status={e.status} /></div>
+                      </div>
                       <div className="p-3">
-                        <Link to="/portal/equipamentos/$id" params={{ id: e.id }} className="line-clamp-1 text-sm font-semibold text-[#213368] hover:underline">
-                          {highlight(e.nome)}
-                        </Link>
-                        <p className="text-xs text-[#6E7280]">{highlight(e.codigo_patrimonio || "—")}</p>
+                        <p className="line-clamp-1 text-sm font-semibold text-[#213368]">{highlight(e.nome)}</p>
+                        <p className="mt-0.5 flex items-center gap-1 text-xs text-[#6E7280]">
+                          <span className="font-mono">{highlight(first)}</span>
+                          {extra > 0 && <span className="rounded-full bg-[#213368]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#213368]">+{extra}</span>}
+                        </p>
                         <div className="mt-2 grid grid-cols-3 gap-1 text-[11px]">
                           <div className="rounded bg-[#F4F4F4] p-1 text-center"><span className="block text-[#6E7280]">Dia</span><span className="font-semibold">{money(e.valor_diaria)}</span></div>
                           <div className="rounded bg-[#F4F4F4] p-1 text-center"><span className="block text-[#6E7280]">Sem</span><span className="font-semibold">{money(e.valor_semanal)}</span></div>
                           <div className="rounded bg-[#F4F4F4] p-1 text-center"><span className="block text-[#6E7280]">Mês</span><span className="font-semibold">{money(e.valor_mensal)}</span></div>
                         </div>
                         <div className="mt-2 flex items-center justify-between text-xs">
-                          <span className="text-[#6E7280]">Qtd: <b className="text-[#1a1a1a]">{e.quantidade_total}</b></span>
+                          <span className="text-[#6E7280]">{codes.length} código{codes.length !== 1 ? "s" : ""} / qtd {e.quantidade_total}</span>
                           <div>
-                            <button onClick={() => { setEditing(e); setOpen(true); }} className="mr-2 font-medium text-[#213368] hover:underline">Editar</button>
-                            <button onClick={() => excluir(e)} className="font-medium text-red-600 hover:underline">Excluir</button>
+                            <button onClick={ev => { ev.preventDefault(); ev.stopPropagation(); setEditing(e); setOpen(true); }} className="mr-2 font-medium text-[#213368] hover:underline">Editar</button>
+                            <button onClick={ev => { ev.preventDefault(); ev.stopPropagation(); excluir(e); }} className="font-medium text-red-600 hover:underline">Excluir</button>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    </Link>
+                    );
+                  })}
                 </div>
               )}
             </div>
