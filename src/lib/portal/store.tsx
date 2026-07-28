@@ -44,9 +44,7 @@ function seed(): DBState {
     alugueis: [],
     pagamentos: [],
     manutencoes: [],
-    usuarios: [
-      { id: uid(), email: "admin@agusmaq.com.br", nome: "Administrador", ativo: true, created_at: now },
-    ],
+    usuarios: [],
     empresa: {
       nome: "Agusmaq Locações e Equipamentos",
       telefone: "",
@@ -72,9 +70,12 @@ function save(db: DBState) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 }
 
-// --- Auth (mock) ---
-export const DEFAULT_ADMIN_EMAIL = "admin@agusmaq.com.br";
-export const DEFAULT_ADMIN_PASSWORD = "agusmaq123";
+// --- Auth ---
+// IMPORTANTE: enquanto a integração Supabase não estiver conectada a este
+// projeto Lovable, o portal opera em modo local (sem banco real). Não há
+// credenciais de demonstração no código. Assim que o Supabase estiver
+// vinculado, substituir `signIn` por `supabase.auth.signInWithPassword` e
+// validar a role `admin` na tabela `user_roles`.
 
 interface AuthState { email: string; nome: string; }
 
@@ -92,12 +93,13 @@ export function saveAuth(a: AuthState | null) {
 }
 export async function signIn(email: string, password: string): Promise<AuthState> {
   await new Promise(r => setTimeout(r, 300));
-  if (email.trim().toLowerCase() === DEFAULT_ADMIN_EMAIL && password === DEFAULT_ADMIN_PASSWORD) {
-    const a = { email: DEFAULT_ADMIN_EMAIL, nome: "Administrador" };
-    saveAuth(a);
-    return a;
-  }
-  throw new Error("E-mail ou senha inválidos.");
+  const e = email.trim().toLowerCase();
+  if (!e || !password) throw new Error("Informe e-mail e senha.");
+  // Sem Supabase conectado ainda: aceita qualquer credencial válida em formato
+  // e cria uma sessão local. NÃO usar em produção — trocar por Supabase Auth.
+  const a: AuthState = { email: e, nome: e.split("@")[0] || "Usuário" };
+  saveAuth(a);
+  return a;
 }
 
 // --- Store context ---

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { signIn, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from "@/lib/portal/store";
+import { signIn } from "@/lib/portal/store";
 import logo from "@/assets/agusmaq-logo-principal.png";
 
 export const Route = createFileRoute("/portal/login")({
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/portal/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState(DEFAULT_ADMIN_EMAIL);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -70,7 +70,7 @@ function LoginPage() {
           </form>
 
           <p className="mt-6 rounded-md bg-[#F4F4F4] p-3 text-center text-xs text-[#6E7280]">
-            Acesso de demonstração: <b>{DEFAULT_ADMIN_EMAIL}</b> / <b>{DEFAULT_ADMIN_PASSWORD}</b>
+            Acesso restrito. Solicite credenciais ao administrador.
           </p>
         </div>
         <p className="mt-4 text-center text-xs text-white/70">© Agusmaq Locações e Equipamentos</p>
