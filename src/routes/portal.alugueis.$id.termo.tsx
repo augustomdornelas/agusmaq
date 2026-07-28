@@ -22,6 +22,7 @@ function TermoPage() {
   const { db } = useStore();
   const sigRef = useRef<SignatureCanvas | null>(null);
   const [sigData, setSigData] = useState<string>("");
+  const [unidadesSel, setUnidadesSel] = useState<Record<string, string[]>>({});
 
   const a = db.alugueis.find(x => x.id === id);
   if (!a) return <PortalLayout title="Termo"><p>Aluguel não encontrado.</p></PortalLayout>;
