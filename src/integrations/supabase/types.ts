@@ -24,6 +24,7 @@ export type Database = {
           desconto: number
           forma_pagamento: string
           id: string
+          numero: number
           observacoes: string
           status: string
           status_pagamento: string
@@ -41,6 +42,7 @@ export type Database = {
           desconto?: number
           forma_pagamento?: string
           id?: string
+          numero?: number
           observacoes?: string
           status?: string
           status_pagamento?: string
@@ -58,6 +60,7 @@ export type Database = {
           desconto?: number
           forma_pagamento?: string
           id?: string
+          numero?: number
           observacoes?: string
           status?: string
           status_pagamento?: string
@@ -190,6 +193,45 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_empresa: {
+        Row: {
+          cidade: string
+          cnpj: string
+          email: string
+          endereco: string
+          id: number
+          logo_url: string
+          nome_empresa: string
+          telefone: string
+          texto_condicoes_termo: string
+          updated_at: string
+        }
+        Insert: {
+          cidade?: string
+          cnpj?: string
+          email?: string
+          endereco?: string
+          id?: number
+          logo_url?: string
+          nome_empresa?: string
+          telefone?: string
+          texto_condicoes_termo?: string
+          updated_at?: string
+        }
+        Update: {
+          cidade?: string
+          cnpj?: string
+          email?: string
+          endereco?: string
+          id?: number
+          logo_url?: string
+          nome_empresa?: string
+          telefone?: string
+          texto_condicoes_termo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       empresa: {
         Row: {
           email: string
@@ -222,6 +264,7 @@ export type Database = {
           categoria_id: string
           codigo_patrimonio: string
           created_at: string
+          data_compra: string | null
           descricao: string
           foto_url: string
           id: string
@@ -230,6 +273,7 @@ export type Database = {
           quantidade_total: number
           status: string
           updated_at: string
+          valor_compra: number
           valor_diaria: number
           valor_mensal: number
           valor_semanal: number
@@ -238,6 +282,7 @@ export type Database = {
           categoria_id: string
           codigo_patrimonio?: string
           created_at?: string
+          data_compra?: string | null
           descricao?: string
           foto_url?: string
           id?: string
@@ -246,6 +291,7 @@ export type Database = {
           quantidade_total?: number
           status?: string
           updated_at?: string
+          valor_compra?: number
           valor_diaria?: number
           valor_mensal?: number
           valor_semanal?: number
@@ -254,6 +300,7 @@ export type Database = {
           categoria_id?: string
           codigo_patrimonio?: string
           created_at?: string
+          data_compra?: string | null
           descricao?: string
           foto_url?: string
           id?: string
@@ -262,6 +309,7 @@ export type Database = {
           quantidade_total?: number
           status?: string
           updated_at?: string
+          valor_compra?: number
           valor_diaria?: number
           valor_mensal?: number
           valor_semanal?: number
