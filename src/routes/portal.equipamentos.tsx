@@ -248,7 +248,29 @@ function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | 
         </div>
         <div className="grid gap-3 p-5 md:grid-cols-2">
           <F label="Nome"><input className="w-full rounded-md border px-2 py-2 text-sm" value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} /></F>
-          <F label="Código de patrimônio"><input className="w-full rounded-md border px-2 py-2 text-sm" value={f.codigo_patrimonio} onChange={e => setF({ ...f, codigo_patrimonio: e.target.value })} /></F>
+          <F label={`Códigos de patrimônio (${f.codigos_patrimonio.length} código${f.codigos_patrimonio.length !== 1 ? "s" : ""} / quantidade ${f.quantidade_total})`}>
+            <div className="flex min-h-[42px] flex-wrap items-center gap-1 rounded-md border bg-white p-1.5">
+              {f.codigos_patrimonio.map(c => (
+                <span key={c} className="inline-flex items-center gap-1 rounded bg-[#213368]/10 px-2 py-0.5 font-mono text-xs text-[#213368]">
+                  {c}
+                  <button type="button" onClick={() => removeChip(c)} className="text-[#213368] hover:text-red-600"><X className="h-3 w-3" /></button>
+                </span>
+              ))}
+              <input
+                className="min-w-[80px] flex-1 border-0 px-1 text-sm outline-none"
+                placeholder={f.codigos_patrimonio.length ? "Adicionar…" : "Ex.: GRD 156 e Enter"}
+                value={chipInput}
+                onChange={e => setChipInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addChip(chipInput); }
+                  else if (e.key === "Backspace" && !chipInput && f.codigos_patrimonio.length) {
+                    removeChip(f.codigos_patrimonio[f.codigos_patrimonio.length - 1]);
+                  }
+                }}
+                onBlur={() => chipInput && addChip(chipInput)}
+              />
+            </div>
+          </F>
           <F label="Categoria"><select className="w-full rounded-md border px-2 py-2 text-sm" value={f.categoria_id} onChange={e => setF({ ...f, categoria_id: e.target.value })}>
             {db.categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select></F>
