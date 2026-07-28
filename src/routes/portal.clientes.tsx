@@ -27,9 +27,9 @@ function ClientesPage() {
     ).sort((a, b) => a.nome_razao_social.localeCompare(b.nome_razao_social));
   }, [db, busca]);
 
-  function excluir(c: Cliente) {
+  async function excluir(c: Cliente) {
     if (!confirm(`Excluir "${c.nome_razao_social}"?`)) return;
-    try { deleteCliente(c.id); toast.success("Excluído."); } catch (e: any) { toast.error(e.message); }
+    try { await deleteCliente(c.id); toast.success("Excluído."); } catch (e: any) { toast.error(e.message); }
   }
 
   return (
