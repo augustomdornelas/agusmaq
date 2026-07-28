@@ -156,9 +156,15 @@ async function fetchAll(): Promise<DBState> {
     ativo: (roles.data ?? []).some((r: any) => r.user_id === p.id && r.role === "admin"),
     created_at: p.created_at,
   }));
+  const equipamentos = ((eqs.data ?? []) as any[]).map(e => ({
+    ...e,
+    codigos_patrimonio: Array.isArray(e.codigos_patrimonio) && e.codigos_patrimonio.length
+      ? e.codigos_patrimonio
+      : (e.codigo_patrimonio ? [e.codigo_patrimonio] : []),
+  })) as Equipamento[];
   return {
     categorias: (cats.data ?? []) as Categoria[],
-    equipamentos: (eqs.data ?? []) as Equipamento[],
+    equipamentos,
     clientes: (cls.data ?? []) as Cliente[],
     alugueis,
     pagamentos: (pgs.data ?? []) as Pagamento[],
