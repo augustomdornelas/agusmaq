@@ -86,6 +86,7 @@ export type Database = {
           id: string
           quantidade: number
           subtotal: number
+          unidades_codigos: string[]
           valor_unitario: number
         }
         Insert: {
@@ -94,6 +95,7 @@ export type Database = {
           id?: string
           quantidade?: number
           subtotal?: number
+          unidades_codigos?: string[]
           valor_unitario?: number
         }
         Update: {
@@ -102,6 +104,7 @@ export type Database = {
           id?: string
           quantidade?: number
           subtotal?: number
+          unidades_codigos?: string[]
           valor_unitario?: number
         }
         Relationships: [
@@ -263,6 +266,7 @@ export type Database = {
         Row: {
           categoria_id: string
           codigo_patrimonio: string
+          codigos_patrimonio: string[]
           created_at: string
           data_compra: string | null
           descricao: string
@@ -281,6 +285,7 @@ export type Database = {
         Insert: {
           categoria_id: string
           codigo_patrimonio?: string
+          codigos_patrimonio?: string[]
           created_at?: string
           data_compra?: string | null
           descricao?: string
@@ -299,6 +304,7 @@ export type Database = {
         Update: {
           categoria_id?: string
           codigo_patrimonio?: string
+          codigos_patrimonio?: string[]
           created_at?: string
           data_compra?: string | null
           descricao?: string
