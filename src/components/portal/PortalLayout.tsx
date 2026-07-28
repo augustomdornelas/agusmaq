@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, ClipboardList, Wrench, FolderTree, Users, Hammer, BarChart3, Settings, LogOut, Menu, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import logoNegativo from "@/assets/agusmaq-logo-negativo.png";
-import { saveAuth } from "@/lib/portal/store";
+import { signOutUser } from "@/lib/portal/store";
 import { cn } from "@/lib/utils";
 
 const items = [
