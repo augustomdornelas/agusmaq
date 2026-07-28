@@ -143,7 +143,7 @@ function NovoAluguelDialog({ onClose }: { onClose: () => void }) {
       await saveAluguel({
         cliente_id: clienteId, data_inicio, data_prevista_devolucao, data_devolucao_real: null,
         tipo_cobranca, status, desconto, valor_frete,
-        valor_total: total, forma_pagamento, status_pagamento, observacoes, itens,
+        forma_pagamento, status_pagamento, observacoes, itens,
       });
       toast.success("Aluguel criado.");
       onClose();
