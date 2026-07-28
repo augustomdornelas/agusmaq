@@ -76,7 +76,8 @@ function AlugueisPage() {
             )}
             {filtrados.map(a => (
               <tr key={a.id} className="border-t">
-                <td className="px-4 py-3">{a._cli?.nome_razao_social ?? "—"}</td>
+                <td className="px-4 py-3 font-mono text-xs">#{a.numero}</td>
+                <td className="px-4 py-3"><Link to="/portal/clientes/$id" params={{ id: a.cliente_id }} className="hover:underline">{a._cli?.nome_razao_social ?? "—"}</Link></td>
                 <td className="px-4 py-3 text-[#6E7280]">
                   {a.itens.map(i => db.equipamentos.find(e => e.id === i.equipamento_id)?.nome).filter(Boolean).join(", ") || "—"}
                 </td>
@@ -85,7 +86,8 @@ function AlugueisPage() {
                 <td className="px-4 py-3 text-right font-semibold">{money(a.valor_total)}</td>
                 <td className="px-4 py-3"><StatusBadge status={a._status} /></td>
                 <td className="px-4 py-3"><StatusBadge status={a.status_pagamento} /></td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <Link to="/portal/alugueis/$id/termo" params={{ id: a.id }} className="mr-3 text-sm font-medium text-[#6E7280] hover:underline">Termo</Link>
                   <Link to="/portal/alugueis/$id" params={{ id: a.id }} className="text-sm font-medium text-[#213368] hover:underline">Abrir</Link>
                 </td>
               </tr>
