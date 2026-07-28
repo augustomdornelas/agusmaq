@@ -222,12 +222,16 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
     },
 
     addEquipamento: async (e) => {
-      const row = must(await supabase.from("equipamentos").insert(e as any).select().single());
+      const codes = (e as any).codigos_patrimonio as string[] | undefined;
+      const payload: any = { ...e };
+      if (codes && codes.length) { payload.codigos_patrimonio = codes; payload.codigo_patrimonio = codes[0] ?? ""; }
+      const row = must(await supabase.from("equipamentos").insert(payload).select().single());
       await reload();
       return row as unknown as Equipamento;
     },
     updateEquipamento: async (id, patch) => {
       const { id: _i, created_at: _c, updated_at: _u, ...rest } = patch as any;
+      if (Array.isArray(rest.codigos_patrimonio)) rest.codigo_patrimonio = rest.codigos_patrimonio[0] ?? "";
       must(await supabase.from("equipamentos").update(rest).eq("id", id).select().single());
       await reload();
     },
@@ -280,6 +284,7 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
       const itensRows = data.itens.map(i => ({
         aluguel_id: alugId, equipamento_id: i.equipamento_id, quantidade: i.quantidade,
         valor_unitario: i.valor_unitario, subtotal: (i.valor_unitario || 0) * (i.quantidade || 0),
+        unidades_codigos: (i as any).unidades_codigos ?? [],
       }));
       if (itensRows.length) must(await supabase.from("aluguel_itens").insert(itensRows).select());
       if (data.status === "ativo") {
