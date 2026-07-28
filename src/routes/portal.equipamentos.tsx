@@ -3,9 +3,9 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { StatusBadge } from "@/components/portal/StatusBadge";
-import { useStore } from "@/lib/portal/store";
-import { money } from "@/lib/portal/format";
-import { Plus, Search, X } from "lucide-react";
+import { useStore, uploadFoto } from "@/lib/portal/store";
+import { money, dateBR } from "@/lib/portal/format";
+import { Plus, Search, X, ChevronDown, ChevronRight, Image as ImageIcon, Upload } from "lucide-react";
 import type { Equipamento, EquipamentoStatus } from "@/lib/portal/types";
 
 export const Route = createFileRoute("/portal/equipamentos")({
@@ -15,26 +15,60 @@ export const Route = createFileRoute("/portal/equipamentos")({
 
 const STATUSES: EquipamentoStatus[] = ["disponivel", "alugado", "manutencao", "inativo"];
 
+async function compressImage(file: File, maxSize = 1200, quality = 0.85): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("fail")), "image/jpeg", quality);
+    };
+    img.onerror = () => reject(new Error("Imagem inválida"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 function EquipamentosPage() {
   const { db, addEquipamento, updateEquipamento, deleteEquipamento } = useStore();
   const [busca, setBusca] = useState("");
-  const [cat, setCat] = useState("");
-  const [st, setSt] = useState("");
   const [editing, setEditing] = useState<Equipamento | null>(null);
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const filtrados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    return db.equipamentos.filter(e => {
-      if (q && !(e.nome.toLowerCase().includes(q) || e.codigo_patrimonio.toLowerCase().includes(q))) return false;
-      if (cat && e.categoria_id !== cat) return false;
-      if (st && e.status !== st) return false;
-      return true;
-    }).sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [db, busca, cat, st]);
+  const q = busca.trim().toLowerCase();
+  const filtered = useMemo(() => db.equipamentos.filter(e =>
+    !q || e.nome.toLowerCase().includes(q) || e.codigo_patrimonio.toLowerCase().includes(q)
+  ), [db.equipamentos, q]);
 
-  function novo() { setEditing(null); setOpen(true); }
-  function editar(e: Equipamento) { setEditing(e); setOpen(true); }
+  const grupos = useMemo(() => {
+    const cats = [...db.categorias].sort((a, b) => a.ordem - b.ordem);
+    return cats.map(c => ({
+      cat: c,
+      items: filtered.filter(e => e.categoria_id === c.id).sort((a, b) => a.nome.localeCompare(b.nome)),
+    })).filter(g => g.items.length > 0 || !q);
+  }, [db.categorias, filtered, q]);
+
+  const openGroups = q ? new Set(grupos.filter(g => g.items.length > 0).map(g => g.cat.id)) : expanded;
+
+  function toggle(id: string) {
+    setExpanded(prev => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return s;
+    });
+  }
+
+  function highlight(text: string): React.ReactNode {
+    if (!q) return text;
+    const i = text.toLowerCase().indexOf(q);
+    if (i < 0) return text;
+    return <>{text.slice(0, i)}<mark className="bg-yellow-200">{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}</>;
+  }
+
   async function excluir(e: Equipamento) {
     if (!confirm(`Excluir "${e.nome}"? Esta ação não pode ser desfeita.`)) return;
     try { await deleteEquipamento(e.id); toast.success("Equipamento excluído."); }
@@ -49,63 +83,85 @@ function EquipamentosPage() {
           <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou código…"
             className="w-full rounded-md border bg-white pl-9 pr-3 py-2 text-sm" />
         </div>
-        <select value={cat} onChange={e => setCat(e.target.value)} className="rounded-md border bg-white px-3 py-2 text-sm">
-          <option value="">Todas categorias</option>
-          {db.categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
-        <select value={st} onChange={e => setSt(e.target.value)} className="rounded-md border bg-white px-3 py-2 text-sm">
-          <option value="">Todos status</option>
-          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <button onClick={novo} className="inline-flex items-center gap-2 rounded-md bg-[#F37032] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db5f22]">
+        <button onClick={() => { setEditing(null); setOpen(true); }} className="inline-flex items-center gap-2 rounded-md bg-[#F37032] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db5f22]">
           <Plus className="h-4 w-4" /> Novo equipamento
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-[#F4F4F4] text-left text-xs uppercase text-[#6E7280]">
-            <tr>
-              <th className="px-3 py-3">Foto</th><th className="px-3 py-3">Nome</th><th className="px-3 py-3">Código</th>
-              <th className="px-3 py-3">Categoria</th><th className="px-3 py-3 text-right">Diária</th>
-              <th className="px-3 py-3 text-right">Qtd</th><th className="px-3 py-3">Status</th><th className="px-3 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtrados.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-[#6E7280]">Nenhum equipamento cadastrado.</td></tr>}
-            {filtrados.map(e => (
-              <tr key={e.id} className="border-t">
-                <td className="px-3 py-2">
-                  {e.foto_url ? <img src={e.foto_url} alt="" className="h-10 w-14 rounded object-cover" /> : <div className="h-10 w-14 rounded bg-[#F4F4F4]" />}
-                </td>
-                <td className="px-3 py-2 font-medium">
-                  <Link to="/portal/equipamentos/$id" params={{ id: e.id }} className="hover:underline">{e.nome}</Link>
-                </td>
-                <td className="px-3 py-2 text-[#6E7280]">{e.codigo_patrimonio}</td>
-                <td className="px-3 py-2">{db.categorias.find(c => c.id === e.categoria_id)?.nome ?? "—"}</td>
-                <td className="px-3 py-2 text-right">{money(e.valor_diaria)}</td>
-                <td className="px-3 py-2 text-right">{e.quantidade_total}</td>
-                <td className="px-3 py-2"><StatusBadge status={e.status} /></td>
-                <td className="px-3 py-2 text-right">
-                  <button onClick={() => editar(e)} className="mr-2 text-xs font-medium text-[#213368] hover:underline">Editar</button>
-                  <button onClick={() => excluir(e)} className="text-xs font-medium text-red-600 hover:underline">Excluir</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="space-y-3">
+        {grupos.length === 0 && <p className="rounded-lg bg-white p-8 text-center text-sm text-[#6E7280]">Nenhum equipamento encontrado.</p>}
+        {grupos.map(({ cat, items }) => {
+          const disp = items.filter(e => e.status === "disponivel").length;
+          const alug = items.filter(e => e.status === "alugado").length;
+          const isOpen = openGroups.has(cat.id);
+          return (
+            <div key={cat.id} className="overflow-hidden rounded-lg bg-white shadow-sm">
+              <button onClick={() => toggle(cat.id)} className="flex w-full items-center justify-between gap-2 border-b px-4 py-3 text-left hover:bg-[#F9FAFB]">
+                <div className="flex items-center gap-2">
+                  {isOpen ? <ChevronDown className="h-4 w-4 text-[#213368]" /> : <ChevronRight className="h-4 w-4 text-[#213368]" />}
+                  <h3 className="text-sm font-semibold text-[#213368]">{cat.nome}</h3>
+                  <span className="text-xs text-[#6E7280]">({items.length})</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800">{disp} disponíveis</span>
+                  <span className="rounded-full bg-orange-100 px-2 py-0.5 font-semibold text-orange-800">{alug} alugados</span>
+                </div>
+              </button>
+              {isOpen && (
+                <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {items.map(e => (
+                    <div key={e.id} className="group overflow-hidden rounded-lg border bg-white transition hover:shadow-md">
+                      <Link to="/portal/equipamentos/$id" params={{ id: e.id }} className="block">
+                        <div className="relative aspect-[4/3] bg-[#F4F4F4]">
+                          {e.foto_url ? (
+                            <img src={e.foto_url} alt={e.nome} className="h-full w-full object-cover" loading="lazy" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[#6E7280]">
+                              <ImageIcon className="h-10 w-10 opacity-40" />
+                            </div>
+                          )}
+                          <div className="absolute right-2 top-2"><StatusBadge status={e.status} /></div>
+                        </div>
+                      </Link>
+                      <div className="p-3">
+                        <Link to="/portal/equipamentos/$id" params={{ id: e.id }} className="line-clamp-1 text-sm font-semibold text-[#213368] hover:underline">
+                          {highlight(e.nome)}
+                        </Link>
+                        <p className="text-xs text-[#6E7280]">{highlight(e.codigo_patrimonio || "—")}</p>
+                        <div className="mt-2 grid grid-cols-3 gap-1 text-[11px]">
+                          <div className="rounded bg-[#F4F4F4] p-1 text-center"><span className="block text-[#6E7280]">Dia</span><span className="font-semibold">{money(e.valor_diaria)}</span></div>
+                          <div className="rounded bg-[#F4F4F4] p-1 text-center"><span className="block text-[#6E7280]">Sem</span><span className="font-semibold">{money(e.valor_semanal)}</span></div>
+                          <div className="rounded bg-[#F4F4F4] p-1 text-center"><span className="block text-[#6E7280]">Mês</span><span className="font-semibold">{money(e.valor_mensal)}</span></div>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-xs">
+                          <span className="text-[#6E7280]">Qtd: <b className="text-[#1a1a1a]">{e.quantidade_total}</b></span>
+                          <div>
+                            <button onClick={() => { setEditing(e); setOpen(true); }} className="mr-2 font-medium text-[#213368] hover:underline">Editar</button>
+                            <button onClick={() => excluir(e)} className="font-medium text-red-600 hover:underline">Excluir</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {open && <EquipamentoForm initial={editing} onClose={() => setOpen(false)} onSave={(data) => {
-        if (editing) { updateEquipamento(editing.id, data); toast.success("Equipamento atualizado."); }
-        else { addEquipamento(data); toast.success("Equipamento cadastrado."); }
-        setOpen(false);
+      {open && <EquipamentoForm initial={editing} onClose={() => setOpen(false)} onSave={async (data) => {
+        try {
+          if (editing) { await updateEquipamento(editing.id, data); toast.success("Equipamento atualizado."); }
+          else { await addEquipamento(data); toast.success("Equipamento cadastrado."); }
+          setOpen(false);
+        } catch (err: any) { toast.error(err.message); }
       }} />}
     </PortalLayout>
   );
 }
 
-function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | null; onClose: () => void; onSave: (d: Omit<Equipamento, "id" | "created_at" | "updated_at">) => void }) {
+function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | null; onClose: () => void; onSave: (d: Omit<Equipamento, "id" | "created_at" | "updated_at">) => void | Promise<void> }) {
   const { db } = useStore();
   const [f, setF] = useState({
     categoria_id: initial?.categoria_id ?? db.categorias[0]?.id ?? "",
@@ -116,22 +172,32 @@ function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | 
     valor_diaria: initial?.valor_diaria ?? 0,
     valor_semanal: initial?.valor_semanal ?? 0,
     valor_mensal: initial?.valor_mensal ?? 0,
+    valor_compra: initial?.valor_compra ?? 0,
+    data_compra: initial?.data_compra ?? "",
     quantidade_total: initial?.quantidade_total ?? 1,
     status: initial?.status ?? "disponivel" as EquipamentoStatus,
     observacoes: initial?.observacoes ?? "",
   });
+  const [uploading, setUploading] = useState(false);
+  const [drag, setDrag] = useState(false);
 
-  function upload(file: File) {
-    const reader = new FileReader();
-    reader.onload = () => setF(p => ({ ...p, foto_url: reader.result as string }));
-    reader.readAsDataURL(file);
+  async function handleFile(file: File) {
+    if (!file.type.startsWith("image/")) return toast.error("Selecione uma imagem.");
+    setUploading(true);
+    try {
+      const blob = await compressImage(file);
+      const url = await uploadFoto(blob, "jpg");
+      setF(p => ({ ...p, foto_url: url }));
+      toast.success("Foto enviada.");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setUploading(false); }
   }
 
-  function submit() {
+  async function submit() {
     if (!f.nome || !f.codigo_patrimonio) return toast.error("Nome e código são obrigatórios.");
     const dup = db.equipamentos.find(e => e.codigo_patrimonio === f.codigo_patrimonio && e.id !== initial?.id);
     if (dup) return toast.error("Código de patrimônio já existe.");
-    onSave(f);
+    await onSave({ ...f, data_compra: f.data_compra || null });
   }
 
   return (
@@ -154,18 +220,31 @@ function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | 
           <F label="Valor semanal"><input type="number" min={0} step="0.01" className="w-full rounded-md border px-2 py-2 text-sm" value={f.valor_semanal} onChange={e => setF({ ...f, valor_semanal: Number(e.target.value) })} /></F>
           <F label="Valor mensal"><input type="number" min={0} step="0.01" className="w-full rounded-md border px-2 py-2 text-sm" value={f.valor_mensal} onChange={e => setF({ ...f, valor_mensal: Number(e.target.value) })} /></F>
           <F label="Quantidade total"><input type="number" min={1} className="w-full rounded-md border px-2 py-2 text-sm" value={f.quantidade_total} onChange={e => setF({ ...f, quantidade_total: Number(e.target.value) })} /></F>
+          <F label="Valor de compra (R$)"><input type="number" min={0} step="0.01" className="w-full rounded-md border px-2 py-2 text-sm" value={f.valor_compra} onChange={e => setF({ ...f, valor_compra: Number(e.target.value) })} /></F>
+          <F label="Data de compra"><input type="date" className="w-full rounded-md border px-2 py-2 text-sm" value={f.data_compra} onChange={e => setF({ ...f, data_compra: e.target.value })} /></F>
           <F label="Foto" className="md:col-span-2">
-            <div className="flex items-center gap-3">
-              {f.foto_url && <img src={f.foto_url} alt="" className="h-16 w-24 rounded object-cover" />}
-              <input type="file" accept="image/*" onChange={e => e.target.files?.[0] && upload(e.target.files[0])} className="text-sm" />
+            <div
+              onDragOver={ev => { ev.preventDefault(); setDrag(true); }}
+              onDragLeave={() => setDrag(false)}
+              onDrop={ev => { ev.preventDefault(); setDrag(false); const file = ev.dataTransfer.files[0]; if (file) handleFile(file); }}
+              className={`flex flex-col items-center gap-3 rounded-md border-2 border-dashed p-4 ${drag ? "border-[#F37032] bg-orange-50" : "border-gray-300"}`}>
+              {f.foto_url && <img src={f.foto_url} alt="" className="h-32 w-48 rounded object-cover" />}
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-[#213368] px-3 py-2 text-xs font-semibold text-white hover:bg-[#1a2856]">
+                <Upload className="h-4 w-4" /> {uploading ? "Enviando…" : "Selecionar ou arraste uma imagem"}
+                <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+              </label>
+              <p className="text-[10px] text-[#6E7280]">Imagem será comprimida para 1200px de largura antes do envio.</p>
             </div>
           </F>
           <F label="Descrição" className="md:col-span-2"><textarea rows={2} className="w-full rounded-md border px-2 py-2 text-sm" value={f.descricao} onChange={e => setF({ ...f, descricao: e.target.value })} /></F>
           <F label="Observações" className="md:col-span-2"><textarea rows={2} className="w-full rounded-md border px-2 py-2 text-sm" value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} /></F>
         </div>
-        <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-white px-5 py-3">
-          <button onClick={onClose} className="rounded-md border px-4 py-2 text-sm">Cancelar</button>
-          <button onClick={submit} className="rounded-md bg-[#F37032] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db5f22]">Salvar</button>
+        <div className="sticky bottom-0 flex items-center justify-between border-t bg-white px-5 py-3">
+          <span className="text-xs text-[#6E7280]">{f.data_compra && `Comprado em ${dateBR(f.data_compra)}`}</span>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="rounded-md border px-4 py-2 text-sm">Cancelar</button>
+            <button onClick={submit} disabled={uploading} className="rounded-md bg-[#F37032] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db5f22] disabled:opacity-50">Salvar</button>
+          </div>
         </div>
       </div>
     </div>
