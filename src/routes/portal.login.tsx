@@ -70,7 +70,7 @@ function LoginPage() {
           </form>
 
           <p className="mt-6 rounded-md bg-[#F4F4F4] p-3 text-center text-xs text-[#6E7280]">
-            Acesso de demonstração: <b>{DEFAULT_ADMIN_EMAIL}</b> / <b>{DEFAULT_ADMIN_PASSWORD}</b>
+            Acesso restrito. Solicite credenciais ao administrador.
           </p>
         </div>
         <p className="mt-4 text-center text-xs text-white/70">© Agusmaq Locações e Equipamentos</p>
