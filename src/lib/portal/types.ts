@@ -23,7 +23,7 @@ export interface Equipamento {
   categoria_id: UUID;
   nome: string;
   codigo_patrimonio: string;
-  codigos_patrimonio: string[];
+  codigos_patrimonio?: string[];
   descricao: string;
   foto_url: string;
   valor_diaria: number;
@@ -59,7 +59,7 @@ export interface AluguelItem {
   quantidade: number;
   valor_unitario: number;
   subtotal: number;
-  unidades_codigos: string[];
+  unidades_codigos?: string[];
 }
 
 export interface Aluguel {
