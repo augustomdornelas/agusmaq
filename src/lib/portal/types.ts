@@ -28,6 +28,8 @@ export interface Equipamento {
   valor_diaria: number;
   valor_semanal: number;
   valor_mensal: number;
+  valor_compra: number;
+  data_compra: string | null;
   quantidade_total: number;
   status: EquipamentoStatus;
   observacoes: string;
@@ -60,6 +62,7 @@ export interface AluguelItem {
 
 export interface Aluguel {
   id: UUID;
+  numero: number;
   cliente_id: UUID;
   data_inicio: string;
   data_prevista_devolucao: string;
@@ -104,6 +107,19 @@ export interface Empresa {
   telefone: string;
   email: string;
   endereco: string;
+}
+
+export interface ConfiguracoesEmpresa {
+  id: number;
+  nome_empresa: string;
+  cnpj: string;
+  endereco: string;
+  cidade: string;
+  telefone: string;
+  email: string;
+  logo_url: string;
+  texto_condicoes_termo: string;
+  updated_at: string;
 }
 
 export interface Usuario {
