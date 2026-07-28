@@ -1,6 +1,6 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { PortalStoreProvider, getCurrentAuth, type AuthState } from "@/lib/portal/store";
+import { PortalStoreProvider, getCurrentAuth } from "@/lib/portal/store";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/portal")({
@@ -14,16 +14,18 @@ export const Route = createFileRoute("/portal")({
 });
 
 function PortalRoot() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isLogin = pathname === "/portal/login";
   const [state, setState] = useState<"loading" | "ok" | "denied">("loading");
 
   useEffect(() => {
+    if (isLogin) { setState("ok"); return; }
     let alive = true;
     const check = async () => {
       const auth = await getCurrentAuth();
       if (!alive) return;
       if (!auth) {
         setState("denied");
-        // redirect
         window.location.replace("/portal/login");
         return;
       }
@@ -35,7 +37,9 @@ function PortalRoot() {
       if (event === "SIGNED_IN" || event === "USER_UPDATED") check();
     });
     return () => { alive = false; sub.subscription.unsubscribe(); };
-  }, []);
+  }, [isLogin]);
+
+  if (isLogin) return <Outlet />;
 
   if (state !== "ok") {
     return (
@@ -51,3 +55,4 @@ function PortalRoot() {
     </PortalStoreProvider>
   );
 }
+
