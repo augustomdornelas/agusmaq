@@ -35,9 +35,9 @@ function EquipamentosPage() {
 
   function novo() { setEditing(null); setOpen(true); }
   function editar(e: Equipamento) { setEditing(e); setOpen(true); }
-  function excluir(e: Equipamento) {
+  async function excluir(e: Equipamento) {
     if (!confirm(`Excluir "${e.nome}"? Esta ação não pode ser desfeita.`)) return;
-    try { deleteEquipamento(e.id); toast.success("Equipamento excluído."); }
+    try { await deleteEquipamento(e.id); toast.success("Equipamento excluído."); }
     catch (err: any) { toast.error(err.message); }
   }
 
