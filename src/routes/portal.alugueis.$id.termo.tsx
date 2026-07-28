@@ -150,10 +150,13 @@ function TermoPage() {
             <tbody>
               {a.itens.map(it => {
                 const eq = db.equipamentos.find(e => e.id === it.equipamento_id);
+                const codes = eq ? ((eq.codigos_patrimonio && eq.codigos_patrimonio.length) ? eq.codigos_patrimonio : (eq.codigo_patrimonio ? [eq.codigo_patrimonio] : [])) : [];
+                const sel = unidadesSel[it.id] ?? (it.unidades_codigos ?? []);
+                const shown = sel.length ? sel : codes;
                 return (
                   <tr key={it.id}>
-                    <td className="border p-2 font-mono text-xs">{eq?.codigo_patrimonio}</td>
-                    <td className="border p-2">{eq?.nome}</td>
+                    <td className="border p-2 font-mono text-xs">{shown.join(", ") || "—"}</td>
+                    <td className="border p-2">{eq?.nome}{sel.length > 0 && sel.length < codes.length && <span className="ml-1 text-[10px] text-[#6E7280]">(unidades selecionadas)</span>}</td>
                     <td className="border p-2 text-right">{it.quantidade}</td>
                     <td className="border p-2 text-right">{money(Number(it.valor_unitario))}</td>
                     <td className="border p-2 text-right">{money(Number(it.subtotal))}</td>
