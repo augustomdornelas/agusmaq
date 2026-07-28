@@ -136,11 +136,11 @@ function NovoAluguelDialog({ onClose }: { onClose: () => void }) {
   const subtotal = itens.reduce((s, i) => s + (i.valor_unitario || 0) * (i.quantidade || 0), 0);
   const total = Math.max(0, subtotal - (desconto || 0) + (valor_frete || 0));
 
-  function submit() {
+  async function submit() {
     if (!clienteId) return toast.error("Selecione um cliente.");
     if (itens.length === 0) return toast.error("Adicione pelo menos um equipamento.");
     try {
-      saveAluguel({
+      await saveAluguel({
         cliente_id: clienteId, data_inicio, data_prevista_devolucao, data_devolucao_real: null,
         tipo_cobranca, status, desconto, valor_frete,
         valor_total: total, forma_pagamento, status_pagamento, observacoes, itens,

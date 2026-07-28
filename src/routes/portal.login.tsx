@@ -26,7 +26,7 @@ function LoginPage() {
     try {
       await signIn(email, password);
       toast.success("Bem-vindo!");
-      navigate({ to: "/portal/dashboard" });
+      window.location.replace("/portal/dashboard");
     } catch (err: any) {
       toast.error(err.message ?? "Falha ao entrar");
     } finally {

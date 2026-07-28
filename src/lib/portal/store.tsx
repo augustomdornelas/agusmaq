@@ -1,11 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type {
   Aluguel, AluguelItem, Categoria, Cliente, Empresa, Equipamento, Manutencao, Pagamento, Usuario, UUID,
 } from "./types";
 import { todayISO } from "./format";
-
-const STORAGE_KEY = "agusmaq_portal_v1";
-const AUTH_KEY = "agusmaq_portal_auth_v1";
 
 interface DBState {
   categorias: Categoria[];
@@ -18,319 +16,311 @@ interface DBState {
   empresa: Empresa;
 }
 
-function uid(): UUID {
-  return (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36));
-}
-
-function nowISO() { return new Date().toISOString(); }
-
-const CATEGORIAS_SEED = [
-  "Betoneiras e vibradores",
-  "Andaimes e escoras",
-  "Compactação de solo",
-  "Geradores e compressores",
-  "Rompedores e perfuração",
-  "Ferramentas elétricas",
-];
-
-function seed(): DBState {
-  const now = nowISO();
-  return {
-    categorias: CATEGORIAS_SEED.map((nome, i) => ({
-      id: uid(), nome, descricao: "", ordem: i + 1, ativa: true, created_at: now, updated_at: now,
-    })),
-    equipamentos: [],
-    clientes: [],
-    alugueis: [],
-    pagamentos: [],
-    manutencoes: [],
-    usuarios: [],
-    empresa: {
-      nome: "Agusmaq Locações e Equipamentos",
-      telefone: "",
-      email: "",
-      endereco: "Agudos, SP",
-    },
-  };
-}
-
-function load(): DBState {
-  if (typeof window === "undefined") return seed();
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return seed();
-    return JSON.parse(raw) as DBState;
-  } catch {
-    return seed();
-  }
-}
-
-function save(db: DBState) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-}
+const EMPTY: DBState = {
+  categorias: [], equipamentos: [], clientes: [], alugueis: [], pagamentos: [], manutencoes: [], usuarios: [],
+  empresa: { nome: "Agusmaq Locações e Equipamentos", telefone: "", email: "", endereco: "Agudos, SP" },
+};
 
 // --- Auth ---
-// IMPORTANTE: enquanto a integração Supabase não estiver conectada a este
-// projeto Lovable, o portal opera em modo local (sem banco real). Não há
-// credenciais de demonstração no código. Assim que o Supabase estiver
-// vinculado, substituir `signIn` por `supabase.auth.signInWithPassword` e
-// validar a role `admin` na tabela `user_roles`.
+export interface AuthState { userId: string; email: string; nome: string; isAdmin: boolean; }
 
-interface AuthState { email: string; nome: string; }
-
-export function loadAuth(): AuthState | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(AUTH_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-export function saveAuth(a: AuthState | null) {
-  if (typeof window === "undefined") return;
-  if (a) localStorage.setItem(AUTH_KEY, JSON.stringify(a));
-  else localStorage.removeItem(AUTH_KEY);
-}
 export async function signIn(email: string, password: string): Promise<AuthState> {
-  await new Promise(r => setTimeout(r, 300));
-  const e = email.trim().toLowerCase();
+  const e = email.trim();
   if (!e || !password) throw new Error("Informe e-mail e senha.");
-  // Sem Supabase conectado ainda: aceita qualquer credencial válida em formato
-  // e cria uma sessão local. NÃO usar em produção — trocar por Supabase Auth.
-  const a: AuthState = { email: e, nome: e.split("@")[0] || "Usuário" };
-  saveAuth(a);
-  return a;
+  const { data, error } = await supabase.auth.signInWithPassword({ email: e, password });
+  if (error) throw new Error(error.message);
+  const uid = data.user!.id;
+  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+  const isAdmin = (roles ?? []).some(r => r.role === "admin");
+  if (!isAdmin) {
+    await supabase.auth.signOut();
+    throw new Error("Acesso restrito: sua conta não possui permissão de administrador.");
+  }
+  const { data: prof } = await supabase.from("profiles").select("nome, email").eq("id", uid).maybeSingle();
+  return { userId: uid, email: prof?.email ?? data.user!.email ?? e, nome: prof?.nome || (data.user!.email ?? "").split("@")[0], isAdmin };
+}
+
+export async function signOutUser() {
+  await supabase.auth.signOut();
+}
+
+export async function getCurrentAuth(): Promise<AuthState | null> {
+  const { data: sess } = await supabase.auth.getSession();
+  if (!sess.session) return null;
+  const uid = sess.session.user.id;
+  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+  const isAdmin = (roles ?? []).some(r => r.role === "admin");
+  if (!isAdmin) return null;
+  const { data: prof } = await supabase.from("profiles").select("nome, email").eq("id", uid).maybeSingle();
+  return { userId: uid, email: prof?.email ?? sess.session.user.email ?? "", nome: prof?.nome || "", isAdmin };
 }
 
 // --- Store context ---
 interface StoreCtx {
   db: DBState;
-  // categorias
-  addCategoria: (c: Omit<Categoria, "id" | "created_at" | "updated_at">) => Categoria;
-  updateCategoria: (id: UUID, patch: Partial<Categoria>) => void;
-  deleteCategoria: (id: UUID) => void;
-  reorderCategoria: (id: UUID, dir: -1 | 1) => void;
-  // equipamentos
-  addEquipamento: (e: Omit<Equipamento, "id" | "created_at" | "updated_at">) => Equipamento;
-  updateEquipamento: (id: UUID, patch: Partial<Equipamento>) => void;
-  deleteEquipamento: (id: UUID) => void;
-  // clientes
-  addCliente: (c: Omit<Cliente, "id" | "created_at" | "updated_at">) => Cliente;
-  updateCliente: (id: UUID, patch: Partial<Cliente>) => void;
-  deleteCliente: (id: UUID) => void;
-  // alugueis
-  saveAluguel: (data: Omit<Aluguel, "id" | "created_at" | "updated_at" | "itens"> & { id?: UUID; itens: Omit<AluguelItem, "id" | "aluguel_id" | "subtotal">[] }) => Aluguel;
-  updateAluguelStatus: (id: UUID, status: Aluguel["status"], data_devolucao_real?: string | null) => void;
-  cancelarAluguel: (id: UUID) => void;
-  // pagamentos
-  addPagamento: (p: Omit<Pagamento, "id" | "created_at">) => Pagamento;
-  // manutencoes
-  addManutencao: (m: Omit<Manutencao, "id" | "created_at" | "updated_at">) => Manutencao;
-  concluirManutencao: (id: UUID, data_fim: string, custo: number) => void;
-  deleteManutencao: (id: UUID) => void;
-  // empresa & usuarios
-  updateEmpresa: (e: Empresa) => void;
-  addUsuario: (u: Omit<Usuario, "id" | "created_at" | "ativo">) => Usuario;
-  toggleUsuario: (id: UUID) => void;
+  loading: boolean;
+  reload: () => Promise<void>;
+  addCategoria: (c: Omit<Categoria, "id" | "created_at" | "updated_at">) => Promise<Categoria>;
+  updateCategoria: (id: UUID, patch: Partial<Categoria>) => Promise<void>;
+  deleteCategoria: (id: UUID) => Promise<void>;
+  reorderCategoria: (id: UUID, dir: -1 | 1) => Promise<void>;
+  addEquipamento: (e: Omit<Equipamento, "id" | "created_at" | "updated_at">) => Promise<Equipamento>;
+  updateEquipamento: (id: UUID, patch: Partial<Equipamento>) => Promise<void>;
+  deleteEquipamento: (id: UUID) => Promise<void>;
+  addCliente: (c: Omit<Cliente, "id" | "created_at" | "updated_at">) => Promise<Cliente>;
+  updateCliente: (id: UUID, patch: Partial<Cliente>) => Promise<void>;
+  deleteCliente: (id: UUID) => Promise<void>;
+  saveAluguel: (data: Omit<Aluguel, "id" | "created_at" | "updated_at" | "itens"> & { id?: UUID; itens: Omit<AluguelItem, "id" | "aluguel_id" | "subtotal">[] }) => Promise<Aluguel>;
+  updateAluguelStatus: (id: UUID, status: Aluguel["status"], data_devolucao_real?: string | null) => Promise<void>;
+  cancelarAluguel: (id: UUID) => Promise<void>;
+  addPagamento: (p: Omit<Pagamento, "id" | "created_at">) => Promise<Pagamento>;
+  addManutencao: (m: Omit<Manutencao, "id" | "created_at" | "updated_at">) => Promise<Manutencao>;
+  concluirManutencao: (id: UUID, data_fim: string, custo: number) => Promise<void>;
+  deleteManutencao: (id: UUID) => Promise<void>;
+  updateEmpresa: (e: Empresa) => Promise<void>;
+  addUsuario: (u: Omit<Usuario, "id" | "created_at" | "ativo">) => Promise<Usuario>;
+  toggleUsuario: (id: UUID) => Promise<void>;
 }
 
 const Ctx = createContext<StoreCtx | null>(null);
 
+function must<T>(r: { data: T | null; error: any }): T {
+  if (r.error) throw new Error(r.error.message);
+  return r.data as T;
+}
+
+async function fetchAll(): Promise<DBState> {
+  const [cats, eqs, cls, als, its, pgs, mns, emp, prof, roles] = await Promise.all([
+    supabase.from("categorias").select("*").order("ordem"),
+    supabase.from("equipamentos").select("*").order("nome"),
+    supabase.from("clientes").select("*").order("nome_razao_social"),
+    supabase.from("alugueis").select("*").order("created_at", { ascending: false }),
+    supabase.from("aluguel_itens").select("*"),
+    supabase.from("pagamentos").select("*"),
+    supabase.from("manutencoes").select("*").order("data_inicio", { ascending: false }),
+    supabase.from("empresa").select("*").eq("id", 1).maybeSingle(),
+    supabase.from("profiles").select("*"),
+    supabase.from("user_roles").select("*"),
+  ]);
+  const itensByAluguel = new Map<string, AluguelItem[]>();
+  for (const it of (its.data ?? [])) {
+    const arr = itensByAluguel.get(it.aluguel_id) ?? [];
+    arr.push(it as any);
+    itensByAluguel.set(it.aluguel_id, arr);
+  }
+  const alugueis = (als.data ?? []).map(a => ({ ...(a as any), itens: itensByAluguel.get(a.id) ?? [] })) as Aluguel[];
+  const usuarios: Usuario[] = (prof.data ?? []).map((p: any) => ({
+    id: p.id, email: p.email, nome: p.nome,
+    ativo: (roles.data ?? []).some((r: any) => r.user_id === p.id && r.role === "admin"),
+    created_at: p.created_at,
+  }));
+  return {
+    categorias: (cats.data ?? []) as Categoria[],
+    equipamentos: (eqs.data ?? []) as Equipamento[],
+    clientes: (cls.data ?? []) as Cliente[],
+    alugueis,
+    pagamentos: (pgs.data ?? []) as Pagamento[],
+    manutencoes: (mns.data ?? []) as Manutencao[],
+    usuarios,
+    empresa: (emp.data as any) ?? EMPTY.empresa,
+  };
+}
+
 export function PortalStoreProvider({ children }: { children: ReactNode }) {
-  const [db, setDb] = useState<DBState>(() => load());
+  const [db, setDb] = useState<DBState>(EMPTY);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { save(db); }, [db]);
+  const reload = useCallback(async () => {
+    try {
+      const s = await fetchAll();
+      setDb(s);
+    } catch (e) {
+      console.error("[portal] fetchAll", e);
+    } finally { setLoading(false); }
+  }, []);
 
-  const mutate = useCallback((fn: (d: DBState) => DBState) => setDb(prev => fn(structuredClone(prev))), []);
+  useEffect(() => { reload(); }, [reload]);
 
   const api = useMemo<StoreCtx>(() => ({
-    db,
+    db, loading, reload,
 
-    addCategoria: (c) => {
-      const now = nowISO();
-      const item: Categoria = { ...c, id: uid(), created_at: now, updated_at: now };
-      mutate(d => { d.categorias.push(item); return d; });
-      return item;
+    addCategoria: async (c) => {
+      const row = must(await supabase.from("categorias").insert(c).select().single());
+      await reload();
+      return row as unknown as Categoria;
     },
-    updateCategoria: (id, patch) => mutate(d => {
-      d.categorias = d.categorias.map(c => c.id === id ? { ...c, ...patch, updated_at: nowISO() } : c);
-      return d;
-    }),
-    deleteCategoria: (id) => mutate(d => {
-      if (d.equipamentos.some(e => e.categoria_id === id)) {
-        throw new Error("Não é possível excluir: existem equipamentos vinculados a esta categoria.");
-      }
-      d.categorias = d.categorias.filter(c => c.id !== id);
-      return d;
-    }),
-    reorderCategoria: (id, dir) => mutate(d => {
-      const sorted = [...d.categorias].sort((a, b) => a.ordem - b.ordem);
+    updateCategoria: async (id, patch) => {
+      const { id: _i, created_at: _c, updated_at: _u, ...rest } = patch as any;
+      must(await supabase.from("categorias").update(rest).eq("id", id).select().single());
+      await reload();
+    },
+    deleteCategoria: async (id) => {
+      const { error } = await supabase.from("categorias").delete().eq("id", id);
+      if (error) throw new Error(error.message.includes("violates foreign key") ? "Não é possível excluir: existem equipamentos vinculados a esta categoria." : error.message);
+      await reload();
+    },
+    reorderCategoria: async (id, dir) => {
+      const sorted = [...db.categorias].sort((a, b) => a.ordem - b.ordem);
       const idx = sorted.findIndex(c => c.id === id);
       const swap = idx + dir;
-      if (idx < 0 || swap < 0 || swap >= sorted.length) return d;
-      const a = sorted[idx].ordem, b = sorted[swap].ordem;
-      d.categorias = d.categorias.map(c => c.id === sorted[idx].id ? { ...c, ordem: b } : c.id === sorted[swap].id ? { ...c, ordem: a } : c);
-      return d;
-    }),
-
-    addEquipamento: (e) => {
-      const now = nowISO();
-      const item: Equipamento = { ...e, id: uid(), created_at: now, updated_at: now };
-      mutate(d => { d.equipamentos.push(item); return d; });
-      return item;
+      if (idx < 0 || swap < 0 || swap >= sorted.length) return;
+      const a = sorted[idx], b = sorted[swap];
+      await Promise.all([
+        supabase.from("categorias").update({ ordem: b.ordem }).eq("id", a.id),
+        supabase.from("categorias").update({ ordem: a.ordem }).eq("id", b.id),
+      ]);
+      await reload();
     },
-    updateEquipamento: (id, patch) => mutate(d => {
-      d.equipamentos = d.equipamentos.map(e => e.id === id ? { ...e, ...patch, updated_at: nowISO() } : e);
-      return d;
-    }),
-    deleteEquipamento: (id) => mutate(d => {
-      const vinculado = d.alugueis.some(a => a.itens.some(i => i.equipamento_id === id));
-      if (vinculado) throw new Error("Não é possível excluir: existem aluguéis vinculados a este equipamento.");
-      d.equipamentos = d.equipamentos.filter(e => e.id !== id);
-      d.manutencoes = d.manutencoes.filter(m => m.equipamento_id !== id);
-      return d;
-    }),
 
-    addCliente: (c) => {
-      const now = nowISO();
-      const item: Cliente = { ...c, id: uid(), created_at: now, updated_at: now };
-      mutate(d => { d.clientes.push(item); return d; });
-      return item;
+    addEquipamento: async (e) => {
+      const row = must(await supabase.from("equipamentos").insert(e).select().single());
+      await reload();
+      return row as unknown as Equipamento;
     },
-    updateCliente: (id, patch) => mutate(d => {
-      d.clientes = d.clientes.map(c => c.id === id ? { ...c, ...patch, updated_at: nowISO() } : c);
-      return d;
-    }),
-    deleteCliente: (id) => mutate(d => {
-      if (d.alugueis.some(a => a.cliente_id === id)) {
-        throw new Error("Não é possível excluir: existem aluguéis vinculados a este cliente.");
-      }
-      d.clientes = d.clientes.filter(c => c.id !== id);
-      return d;
-    }),
+    updateEquipamento: async (id, patch) => {
+      const { id: _i, created_at: _c, updated_at: _u, ...rest } = patch as any;
+      must(await supabase.from("equipamentos").update(rest).eq("id", id).select().single());
+      await reload();
+    },
+    deleteEquipamento: async (id) => {
+      const { error } = await supabase.from("equipamentos").delete().eq("id", id);
+      if (error) throw new Error(error.message.includes("violates foreign key") ? "Não é possível excluir: existem aluguéis vinculados a este equipamento." : error.message);
+      await reload();
+    },
 
-    saveAluguel: (data) => {
-      const now = nowISO();
-      const id = data.id ?? uid();
-      const itens: AluguelItem[] = data.itens.map(i => ({
-        ...i, id: uid(), aluguel_id: id, subtotal: (i.valor_unitario || 0) * (i.quantidade || 0),
-      }));
-      const subtotal = itens.reduce((s, i) => s + i.subtotal, 0);
+    addCliente: async (c) => {
+      const row = must(await supabase.from("clientes").insert(c).select().single());
+      await reload();
+      return row as unknown as Cliente;
+    },
+    updateCliente: async (id, patch) => {
+      const { id: _i, created_at: _c, updated_at: _u, ...rest } = patch as any;
+      must(await supabase.from("clientes").update(rest).eq("id", id).select().single());
+      await reload();
+    },
+    deleteCliente: async (id) => {
+      const { error } = await supabase.from("clientes").delete().eq("id", id);
+      if (error) throw new Error(error.message.includes("violates foreign key") ? "Não é possível excluir: existem aluguéis vinculados a este cliente." : error.message);
+      await reload();
+    },
+
+    saveAluguel: async (data) => {
+      const subtotal = data.itens.reduce((s, i) => s + (i.valor_unitario || 0) * (i.quantidade || 0), 0);
       const valor_total = Math.max(0, subtotal - (data.desconto || 0) + (data.valor_frete || 0));
-      const aluguel: Aluguel = {
-        id, cliente_id: data.cliente_id,
-        data_inicio: data.data_inicio, data_prevista_devolucao: data.data_prevista_devolucao,
+      const payload = {
+        cliente_id: data.cliente_id,
+        data_inicio: data.data_inicio,
+        data_prevista_devolucao: data.data_prevista_devolucao,
         data_devolucao_real: data.data_devolucao_real ?? null,
         tipo_cobranca: data.tipo_cobranca, status: data.status,
         desconto: data.desconto || 0, valor_frete: data.valor_frete || 0, valor_total,
         forma_pagamento: data.forma_pagamento, status_pagamento: data.status_pagamento,
-        observacoes: data.observacoes || "", itens,
-        created_at: data.id ? "" : now, updated_at: now,
+        observacoes: data.observacoes || "",
       };
-      mutate(d => {
-        const existing = d.alugueis.find(a => a.id === id);
-        if (existing) {
-          aluguel.created_at = existing.created_at;
-          d.alugueis = d.alugueis.map(a => a.id === id ? aluguel : a);
-        } else {
-          d.alugueis.push(aluguel);
-        }
-        // regra: status "ativo" -> equipamentos "alugado"
-        if (aluguel.status === "ativo") {
-          const ids = new Set(aluguel.itens.map(i => i.equipamento_id));
-          d.equipamentos = d.equipamentos.map(e => ids.has(e.id) && e.status === "disponivel" ? { ...e, status: "alugado", updated_at: nowISO() } : e);
-        }
-        return d;
-      });
-      return aluguel;
+      let alugId: string;
+      if (data.id) {
+        must(await supabase.from("alugueis").update(payload).eq("id", data.id).select().single());
+        alugId = data.id;
+        await supabase.from("aluguel_itens").delete().eq("aluguel_id", alugId);
+      } else {
+        const row = must(await supabase.from("alugueis").insert(payload).select().single()) as any;
+        alugId = row.id;
+      }
+      const itensRows = data.itens.map(i => ({
+        aluguel_id: alugId, equipamento_id: i.equipamento_id, quantidade: i.quantidade,
+        valor_unitario: i.valor_unitario, subtotal: (i.valor_unitario || 0) * (i.quantidade || 0),
+      }));
+      if (itensRows.length) must(await supabase.from("aluguel_itens").insert(itensRows).select());
+      if (data.status === "ativo") {
+        const ids = Array.from(new Set(data.itens.map(i => i.equipamento_id)));
+        if (ids.length) await supabase.from("equipamentos").update({ status: "alugado" }).in("id", ids).eq("status", "disponivel");
+      }
+      await reload();
+      return { ...(payload as any), id: alugId, itens: [] } as Aluguel;
     },
-    updateAluguelStatus: (id, status, data_devolucao_real) => mutate(d => {
-      const al = d.alugueis.find(a => a.id === id);
-      if (!al) return d;
-      al.status = status;
-      al.updated_at = nowISO();
-      if (status === "devolvido") {
-        al.data_devolucao_real = data_devolucao_real ?? todayISO();
-        const ids = new Set(al.itens.map(i => i.equipamento_id));
-        d.equipamentos = d.equipamentos.map(e => ids.has(e.id) && e.status === "alugado" ? { ...e, status: "disponivel", updated_at: nowISO() } : e);
-      }
-      if (status === "ativo") {
-        const ids = new Set(al.itens.map(i => i.equipamento_id));
-        d.equipamentos = d.equipamentos.map(e => ids.has(e.id) && e.status === "disponivel" ? { ...e, status: "alugado", updated_at: nowISO() } : e);
-      }
-      return d;
-    }),
-    cancelarAluguel: (id) => mutate(d => {
-      const al = d.alugueis.find(a => a.id === id);
-      if (!al) return d;
-      const era_ativo = al.status === "ativo";
-      al.status = "cancelado";
-      al.updated_at = nowISO();
-      if (era_ativo) {
-        const ids = new Set(al.itens.map(i => i.equipamento_id));
-        d.equipamentos = d.equipamentos.map(e => ids.has(e.id) && e.status === "alugado" ? { ...e, status: "disponivel", updated_at: nowISO() } : e);
-      }
-      return d;
-    }),
-
-    addPagamento: (p) => {
-      const item: Pagamento = { ...p, id: uid(), created_at: nowISO() };
-      mutate(d => {
-        d.pagamentos.push(item);
-        const al = d.alugueis.find(a => a.id === p.aluguel_id);
-        if (al) {
-          const pago = d.pagamentos.filter(x => x.aluguel_id === al.id).reduce((s, x) => s + x.valor, 0);
-          al.status_pagamento = pago >= al.valor_total ? "pago" : pago > 0 ? "parcial" : "pendente";
-          al.updated_at = nowISO();
+    updateAluguelStatus: async (id, status, data_devolucao_real) => {
+      const al = db.alugueis.find(a => a.id === id);
+      const patch: any = { status };
+      if (status === "devolvido") patch.data_devolucao_real = data_devolucao_real ?? todayISO();
+      must(await supabase.from("alugueis").update(patch).eq("id", id).select().single());
+      if (al) {
+        const ids = Array.from(new Set(al.itens.map(i => i.equipamento_id)));
+        if (status === "devolvido" && ids.length) {
+          await supabase.from("equipamentos").update({ status: "disponivel" }).in("id", ids).eq("status", "alugado");
         }
-        return d;
-      });
-      return item;
+        if (status === "ativo" && ids.length) {
+          await supabase.from("equipamentos").update({ status: "alugado" }).in("id", ids).eq("status", "disponivel");
+        }
+      }
+      await reload();
+    },
+    cancelarAluguel: async (id) => {
+      const al = db.alugueis.find(a => a.id === id);
+      const era_ativo = al?.status === "ativo";
+      must(await supabase.from("alugueis").update({ status: "cancelado" }).eq("id", id).select().single());
+      if (era_ativo && al) {
+        const ids = Array.from(new Set(al.itens.map(i => i.equipamento_id)));
+        if (ids.length) await supabase.from("equipamentos").update({ status: "disponivel" }).in("id", ids).eq("status", "alugado");
+      }
+      await reload();
     },
 
-    addManutencao: (m) => {
-      const now = nowISO();
-      const item: Manutencao = { ...m, id: uid(), created_at: now, updated_at: now };
-      mutate(d => {
-        d.manutencoes.push(item);
-        if (item.status === "em_andamento") {
-          d.equipamentos = d.equipamentos.map(e => e.id === item.equipamento_id ? { ...e, status: "manutencao", updated_at: now } : e);
-        }
-        return d;
-      });
-      return item;
-    },
-    concluirManutencao: (id, data_fim, custo) => mutate(d => {
-      const m = d.manutencoes.find(x => x.id === id);
-      if (!m) return d;
-      m.status = "concluida";
-      m.data_fim = data_fim;
-      m.custo = custo;
-      m.updated_at = nowISO();
-      // volta pra disponivel se não estiver alugado
-      const eq = d.equipamentos.find(e => e.id === m.equipamento_id);
-      if (eq && eq.status === "manutencao") {
-        eq.status = "disponivel";
-        eq.updated_at = nowISO();
+    addPagamento: async (p) => {
+      const row = must(await supabase.from("pagamentos").insert(p).select().single()) as any;
+      const al = db.alugueis.find(a => a.id === p.aluguel_id);
+      if (al) {
+        const pago = db.pagamentos.filter(x => x.aluguel_id === al.id).reduce((s, x) => s + Number(x.valor), 0) + Number(p.valor);
+        const status_pagamento = pago >= al.valor_total ? "pago" : pago > 0 ? "parcial" : "pendente";
+        await supabase.from("alugueis").update({ status_pagamento }).eq("id", al.id);
       }
-      return d;
-    }),
-    deleteManutencao: (id) => mutate(d => {
-      d.manutencoes = d.manutencoes.filter(m => m.id !== id);
-      return d;
-    }),
-
-    updateEmpresa: (e) => mutate(d => { d.empresa = e; return d; }),
-    addUsuario: (u) => {
-      const item: Usuario = { ...u, id: uid(), ativo: true, created_at: nowISO() };
-      mutate(d => { d.usuarios.push(item); return d; });
-      return item;
+      await reload();
+      return row as unknown as Pagamento;
     },
-    toggleUsuario: (id) => mutate(d => {
-      d.usuarios = d.usuarios.map(u => u.id === id ? { ...u, ativo: !u.ativo } : u);
-      return d;
-    }),
-  }), [db, mutate]);
+
+    addManutencao: async (m) => {
+      const row = must(await supabase.from("manutencoes").insert(m).select().single()) as any;
+      if (m.status === "em_andamento") {
+        await supabase.from("equipamentos").update({ status: "manutencao" }).eq("id", m.equipamento_id);
+      }
+      await reload();
+      return row as unknown as Manutencao;
+    },
+    concluirManutencao: async (id, data_fim, custo) => {
+      const m = db.manutencoes.find(x => x.id === id);
+      must(await supabase.from("manutencoes").update({ status: "concluida", data_fim, custo }).eq("id", id).select().single());
+      if (m) {
+        const eq = db.equipamentos.find(e => e.id === m.equipamento_id);
+        if (eq && eq.status === "manutencao") {
+          await supabase.from("equipamentos").update({ status: "disponivel" }).eq("id", eq.id);
+        }
+      }
+      await reload();
+    },
+    deleteManutencao: async (id) => {
+      const { error } = await supabase.from("manutencoes").delete().eq("id", id);
+      if (error) throw new Error(error.message);
+      await reload();
+    },
+
+    updateEmpresa: async (e) => {
+      must(await supabase.from("empresa").update({ nome: e.nome, telefone: e.telefone, email: e.email, endereco: e.endereco }).eq("id", 1).select().single());
+      await reload();
+    },
+    addUsuario: async () => {
+      throw new Error("Novos usuários são criados via Supabase Auth. Convide pelo painel do Supabase e adicione o papel 'admin' em user_roles.");
+    },
+    toggleUsuario: async (id) => {
+      // Alterna papel admin
+      const existing = db.usuarios.find(u => u.id === id);
+      if (!existing) return;
+      if (existing.ativo) {
+        await supabase.from("user_roles").delete().eq("user_id", id).eq("role", "admin");
+      } else {
+        await supabase.from("user_roles").insert({ user_id: id, role: "admin" });
+      }
+      await reload();
+    },
+  }), [db, loading, reload]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }
@@ -345,7 +335,6 @@ export function useStore() {
 export function isAtrasado(a: Aluguel, today = todayISO()): boolean {
   return a.status === "ativo" && !a.data_devolucao_real && a.data_prevista_devolucao < today;
 }
-
 export function displayStatus(a: Aluguel): Aluguel["status"] {
   return isAtrasado(a) ? "atrasado" : a.status;
 }
