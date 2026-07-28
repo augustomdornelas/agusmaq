@@ -23,7 +23,9 @@ import { Route as PortalCategoriasRouteImport } from './routes/portal.categorias
 import { Route as PortalAlugueisRouteImport } from './routes/portal.alugueis'
 import { Route as PortalEquipamentosIdRouteImport } from './routes/portal.equipamentos.$id'
 import { Route as PortalClientesIdRouteImport } from './routes/portal.clientes.$id'
+import { Route as PortalAlugueisNovoRouteImport } from './routes/portal.alugueis.novo'
 import { Route as PortalAlugueisIdRouteImport } from './routes/portal.alugueis.$id'
+import { Route as PortalAlugueisIdTermoRouteImport } from './routes/portal.alugueis.$id.termo'
 
 const PortalRoute = PortalRouteImport.update({
   id: '/portal',
@@ -95,10 +97,20 @@ const PortalClientesIdRoute = PortalClientesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => PortalClientesRoute,
 } as any)
+const PortalAlugueisNovoRoute = PortalAlugueisNovoRouteImport.update({
+  id: '/novo',
+  path: '/novo',
+  getParentRoute: () => PortalAlugueisRoute,
+} as any)
 const PortalAlugueisIdRoute = PortalAlugueisIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => PortalAlugueisRoute,
+} as any)
+const PortalAlugueisIdTermoRoute = PortalAlugueisIdTermoRouteImport.update({
+  id: '/termo',
+  path: '/termo',
+  getParentRoute: () => PortalAlugueisIdRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -114,9 +126,11 @@ export interface FileRoutesByFullPath {
   '/portal/manutencoes': typeof PortalManutencoesRoute
   '/portal/relatorios': typeof PortalRelatoriosRoute
   '/portal/': typeof PortalIndexRoute
-  '/portal/alugueis/$id': typeof PortalAlugueisIdRoute
+  '/portal/alugueis/$id': typeof PortalAlugueisIdRouteWithChildren
+  '/portal/alugueis/novo': typeof PortalAlugueisNovoRoute
   '/portal/clientes/$id': typeof PortalClientesIdRoute
   '/portal/equipamentos/$id': typeof PortalEquipamentosIdRoute
+  '/portal/alugueis/$id/termo': typeof PortalAlugueisIdTermoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -130,9 +144,11 @@ export interface FileRoutesByTo {
   '/portal/manutencoes': typeof PortalManutencoesRoute
   '/portal/relatorios': typeof PortalRelatoriosRoute
   '/portal': typeof PortalIndexRoute
-  '/portal/alugueis/$id': typeof PortalAlugueisIdRoute
+  '/portal/alugueis/$id': typeof PortalAlugueisIdRouteWithChildren
+  '/portal/alugueis/novo': typeof PortalAlugueisNovoRoute
   '/portal/clientes/$id': typeof PortalClientesIdRoute
   '/portal/equipamentos/$id': typeof PortalEquipamentosIdRoute
+  '/portal/alugueis/$id/termo': typeof PortalAlugueisIdTermoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -148,9 +164,11 @@ export interface FileRoutesById {
   '/portal/manutencoes': typeof PortalManutencoesRoute
   '/portal/relatorios': typeof PortalRelatoriosRoute
   '/portal/': typeof PortalIndexRoute
-  '/portal/alugueis/$id': typeof PortalAlugueisIdRoute
+  '/portal/alugueis/$id': typeof PortalAlugueisIdRouteWithChildren
+  '/portal/alugueis/novo': typeof PortalAlugueisNovoRoute
   '/portal/clientes/$id': typeof PortalClientesIdRoute
   '/portal/equipamentos/$id': typeof PortalEquipamentosIdRoute
+  '/portal/alugueis/$id/termo': typeof PortalAlugueisIdTermoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -168,8 +186,10 @@ export interface FileRouteTypes {
     | '/portal/relatorios'
     | '/portal/'
     | '/portal/alugueis/$id'
+    | '/portal/alugueis/novo'
     | '/portal/clientes/$id'
     | '/portal/equipamentos/$id'
+    | '/portal/alugueis/$id/termo'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -184,8 +204,10 @@ export interface FileRouteTypes {
     | '/portal/relatorios'
     | '/portal'
     | '/portal/alugueis/$id'
+    | '/portal/alugueis/novo'
     | '/portal/clientes/$id'
     | '/portal/equipamentos/$id'
+    | '/portal/alugueis/$id/termo'
   id:
     | '__root__'
     | '/'
@@ -201,8 +223,10 @@ export interface FileRouteTypes {
     | '/portal/relatorios'
     | '/portal/'
     | '/portal/alugueis/$id'
+    | '/portal/alugueis/novo'
     | '/portal/clientes/$id'
     | '/portal/equipamentos/$id'
+    | '/portal/alugueis/$id/termo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -310,6 +334,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalClientesIdRouteImport
       parentRoute: typeof PortalClientesRoute
     }
+    '/portal/alugueis/novo': {
+      id: '/portal/alugueis/novo'
+      path: '/novo'
+      fullPath: '/portal/alugueis/novo'
+      preLoaderRoute: typeof PortalAlugueisNovoRouteImport
+      parentRoute: typeof PortalAlugueisRoute
+    }
     '/portal/alugueis/$id': {
       id: '/portal/alugueis/$id'
       path: '/$id'
@@ -317,15 +348,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalAlugueisIdRouteImport
       parentRoute: typeof PortalAlugueisRoute
     }
+    '/portal/alugueis/$id/termo': {
+      id: '/portal/alugueis/$id/termo'
+      path: '/termo'
+      fullPath: '/portal/alugueis/$id/termo'
+      preLoaderRoute: typeof PortalAlugueisIdTermoRouteImport
+      parentRoute: typeof PortalAlugueisIdRoute
+    }
   }
 }
 
+interface PortalAlugueisIdRouteChildren {
+  PortalAlugueisIdTermoRoute: typeof PortalAlugueisIdTermoRoute
+}
+
+const PortalAlugueisIdRouteChildren: PortalAlugueisIdRouteChildren = {
+  PortalAlugueisIdTermoRoute: PortalAlugueisIdTermoRoute,
+}
+
+const PortalAlugueisIdRouteWithChildren =
+  PortalAlugueisIdRoute._addFileChildren(PortalAlugueisIdRouteChildren)
+
 interface PortalAlugueisRouteChildren {
-  PortalAlugueisIdRoute: typeof PortalAlugueisIdRoute
+  PortalAlugueisIdRoute: typeof PortalAlugueisIdRouteWithChildren
+  PortalAlugueisNovoRoute: typeof PortalAlugueisNovoRoute
 }
 
 const PortalAlugueisRouteChildren: PortalAlugueisRouteChildren = {
-  PortalAlugueisIdRoute: PortalAlugueisIdRoute,
+  PortalAlugueisIdRoute: PortalAlugueisIdRouteWithChildren,
+  PortalAlugueisNovoRoute: PortalAlugueisNovoRoute,
 }
 
 const PortalAlugueisRouteWithChildren = PortalAlugueisRoute._addFileChildren(
