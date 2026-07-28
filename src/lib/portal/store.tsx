@@ -147,7 +147,7 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
     addCategoria: async (c) => {
       const row = must(await supabase.from("categorias").insert(c).select().single());
       await reload();
-      return row as Categoria;
+      return row as unknown as Categoria;
     },
     updateCategoria: async (id, patch) => {
       const { id: _i, created_at: _c, updated_at: _u, ...rest } = patch as any;
@@ -175,7 +175,7 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
     addEquipamento: async (e) => {
       const row = must(await supabase.from("equipamentos").insert(e).select().single());
       await reload();
-      return row as Equipamento;
+      return row as unknown as Equipamento;
     },
     updateEquipamento: async (id, patch) => {
       const { id: _i, created_at: _c, updated_at: _u, ...rest } = patch as any;
@@ -191,7 +191,7 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
     addCliente: async (c) => {
       const row = must(await supabase.from("clientes").insert(c).select().single());
       await reload();
-      return row as Cliente;
+      return row as unknown as Cliente;
     },
     updateCliente: async (id, patch) => {
       const { id: _i, created_at: _c, updated_at: _u, ...rest } = patch as any;
@@ -274,7 +274,7 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
         await supabase.from("alugueis").update({ status_pagamento }).eq("id", al.id);
       }
       await reload();
-      return row as Pagamento;
+      return row as unknown as Pagamento;
     },
 
     addManutencao: async (m) => {
@@ -283,7 +283,7 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
         await supabase.from("equipamentos").update({ status: "manutencao" }).eq("id", m.equipamento_id);
       }
       await reload();
-      return row as Manutencao;
+      return row as unknown as Manutencao;
     },
     concluirManutencao: async (id, data_fim, custo) => {
       const m = db.manutencoes.find(x => x.id === id);
