@@ -44,9 +44,7 @@ function seed(): DBState {
     alugueis: [],
     pagamentos: [],
     manutencoes: [],
-    usuarios: [
-      { id: uid(), email: "admin@agusmaq.com.br", nome: "Administrador", ativo: true, created_at: now },
-    ],
+    usuarios: [],
     empresa: {
       nome: "Agusmaq Locações e Equipamentos",
       telefone: "",
