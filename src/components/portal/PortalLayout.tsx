@@ -21,8 +21,8 @@ export function PortalLayout({ children, title }: { children: ReactNode; title?:
   const navigate = useNavigate();
   const pathname = useRouterState({ select: s => s.location.pathname });
 
-  const logout = () => {
-    saveAuth(null);
+  const logout = async () => {
+    await signOutUser();
     navigate({ to: "/portal/login" });
   };
 
