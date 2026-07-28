@@ -49,15 +49,17 @@ function AlugueisPage() {
         </select>
         <input type="date" value={de} onChange={e => setDe(e.target.value)} className="rounded-md border bg-white px-3 py-2 text-sm" />
         <input type="date" value={ate} onChange={e => setAte(e.target.value)} className="rounded-md border bg-white px-3 py-2 text-sm" />
-        <button onClick={() => setOpenForm(true)} className="inline-flex items-center gap-2 rounded-md bg-[#F37032] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db5f22]">
+        <Link to="/portal/alugueis/novo" className="inline-flex items-center gap-2 rounded-md bg-[#F37032] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db5f22]">
           <Plus className="h-4 w-4" /> Novo aluguel
-        </button>
+        </Link>
+        <button onClick={() => setOpenForm(true)} className="hidden">Legacy</button>
       </div>
 
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-[#F4F4F4] text-left text-xs uppercase text-[#6E7280]">
             <tr>
+              <th className="px-4 py-3">Nº</th>
               <th className="px-4 py-3">Cliente</th>
               <th className="px-4 py-3">Equipamentos</th>
               <th className="px-4 py-3">Início</th>
@@ -70,7 +72,7 @@ function AlugueisPage() {
           </thead>
           <tbody>
             {filtrados.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-[#6E7280]">Nenhum aluguel encontrado.</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-[#6E7280]">Nenhum aluguel encontrado.</td></tr>
             )}
             {filtrados.map(a => (
               <tr key={a.id} className="border-t">
