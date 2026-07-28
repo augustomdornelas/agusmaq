@@ -176,10 +176,13 @@ function EquipamentosPage() {
 
 function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | null; onClose: () => void; onSave: (d: Omit<Equipamento, "id" | "created_at" | "updated_at">) => void | Promise<void> }) {
   const { db } = useStore();
+  const initialCodes = (initial?.codigos_patrimonio && initial.codigos_patrimonio.length)
+    ? [...initial.codigos_patrimonio]
+    : (initial?.codigo_patrimonio ? [initial.codigo_patrimonio] : []);
   const [f, setF] = useState({
     categoria_id: initial?.categoria_id ?? db.categorias[0]?.id ?? "",
     nome: initial?.nome ?? "",
-    codigo_patrimonio: initial?.codigo_patrimonio ?? "",
+    codigos_patrimonio: initialCodes,
     descricao: initial?.descricao ?? "",
     foto_url: initial?.foto_url ?? "",
     valor_diaria: initial?.valor_diaria ?? 0,
@@ -187,12 +190,25 @@ function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | 
     valor_mensal: initial?.valor_mensal ?? 0,
     valor_compra: initial?.valor_compra ?? 0,
     data_compra: initial?.data_compra ?? "",
-    quantidade_total: initial?.quantidade_total ?? 1,
+    quantidade_total: initial?.quantidade_total ?? Math.max(1, initialCodes.length),
     status: initial?.status ?? "disponivel" as EquipamentoStatus,
     observacoes: initial?.observacoes ?? "",
   });
+  const [chipInput, setChipInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [drag, setDrag] = useState(false);
+
+  function addChip(v: string) {
+    const val = v.trim();
+    if (!val) return;
+    if (f.codigos_patrimonio.includes(val)) { setChipInput(""); return; }
+    const next = [...f.codigos_patrimonio, val];
+    setF(p => ({ ...p, codigos_patrimonio: next, quantidade_total: Math.max(p.quantidade_total, next.length) }));
+    setChipInput("");
+  }
+  function removeChip(v: string) {
+    setF(p => ({ ...p, codigos_patrimonio: p.codigos_patrimonio.filter(c => c !== v) }));
+  }
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) return toast.error("Selecione uma imagem.");
@@ -207,10 +223,20 @@ function EquipamentoForm({ initial, onClose, onSave }: { initial: Equipamento | 
   }
 
   async function submit() {
-    if (!f.nome || !f.codigo_patrimonio) return toast.error("Nome e código são obrigatórios.");
-    const dup = db.equipamentos.find(e => e.codigo_patrimonio === f.codigo_patrimonio && e.id !== initial?.id);
-    if (dup) return toast.error("Código de patrimônio já existe.");
-    await onSave({ ...f, data_compra: f.data_compra || null });
+    let codes = f.codigos_patrimonio;
+    if (chipInput.trim()) codes = [...codes, chipInput.trim()];
+    if (!f.nome || codes.length === 0) return toast.error("Informe o nome e pelo menos um código.");
+    const dup = db.equipamentos.find(e => e.id !== initial?.id && (
+      codes.some(c => (e.codigos_patrimonio ?? []).includes(c) || e.codigo_patrimonio === c)
+    ));
+    if (dup) return toast.error(`Código já existe no equipamento "${dup.nome}".`);
+    await onSave({
+      ...f,
+      codigos_patrimonio: codes,
+      codigo_patrimonio: codes[0],
+      quantidade_total: Math.max(f.quantidade_total, codes.length),
+      data_compra: f.data_compra || null,
+    } as any);
   }
 
   return (
