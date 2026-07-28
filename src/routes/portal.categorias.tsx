@@ -25,9 +25,9 @@ function CategoriasPage() {
     setForm({ nome: "", descricao: "" }); setEditing(null);
   }
   function editar(c: Categoria) { setEditing(c); setForm({ nome: c.nome, descricao: c.descricao }); }
-  function excluir(c: Categoria) {
+  async function excluir(c: Categoria) {
     if (!confirm(`Excluir "${c.nome}"?`)) return;
-    try { deleteCategoria(c.id); toast.success("Excluída."); } catch (e: any) { toast.error(e.message); }
+    try { await deleteCategoria(c.id); toast.success("Excluída."); } catch (e: any) { toast.error(e.message); }
   }
 
   return (
