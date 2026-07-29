@@ -49,3 +49,12 @@ export function whatsappLink(phone: string, msg = ""): string {
   const num = d.startsWith("55") ? d : "55" + d;
   return `https://wa.me/${num}${msg ? `?text=${encodeURIComponent(msg)}` : ""}`;
 }
+
+export function pct(v: number, digits = 1): string {
+  const safe = Number.isFinite(v) ? v : 0;
+  return `${safe.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
+}
+
+export function normalizeSearch(s: string): string {
+  return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+}

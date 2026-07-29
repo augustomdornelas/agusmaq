@@ -8,7 +8,7 @@ import { dateBR, money, todayISO, addDays } from "@/lib/portal/format";
 import { Plus, Search, Trash2, X } from "lucide-react";
 import type { AluguelStatus, TipoCobranca, FormaPagamento, StatusPagamento } from "@/lib/portal/types";
 
-export const Route = createFileRoute("/portal/alugueis")({
+export const Route = createFileRoute("/portal/alugueis/")({
   head: () => ({ meta: [{ title: "Aluguéis — Portal Agusmaq" }, { name: "robots", content: "noindex, nofollow" }] }),
   component: AlugueisPage,
 });

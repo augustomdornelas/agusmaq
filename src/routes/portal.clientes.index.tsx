@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PortalLayout } from "@/components/portal/PortalLayout";
@@ -7,13 +7,14 @@ import { maskCpfCnpj, maskPhone, onlyDigits, whatsappLink } from "@/lib/portal/f
 import { MessageCircle, Plus, Search, X } from "lucide-react";
 import type { Cliente, ClienteTipo } from "@/lib/portal/types";
 
-export const Route = createFileRoute("/portal/clientes")({
+export const Route = createFileRoute("/portal/clientes/")({
   head: () => ({ meta: [{ title: "Clientes — Portal Agusmaq" }, { name: "robots", content: "noindex, nofollow" }] }),
   component: ClientesPage,
 });
 
 function ClientesPage() {
   const { db, addCliente, updateCliente, deleteCliente } = useStore();
+  const navigate = useNavigate();
   const [busca, setBusca] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Cliente | null>(null);
@@ -53,13 +54,17 @@ function ClientesPage() {
           <tbody>
             {lista.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-[#6E7280]">Nenhum cliente cadastrado.</td></tr>}
             {lista.map(c => (
-              <tr key={c.id} className="border-t">
-                <td className="px-4 py-3"><Link to="/portal/clientes/$id" params={{ id: c.id }} className="font-medium hover:underline">{c.nome_razao_social}</Link></td>
+              <tr
+                key={c.id}
+                className="cursor-pointer border-t hover:bg-[#F9FAFB]"
+                onClick={() => navigate({ to: "/portal/clientes/$id", params: { id: c.id } })}
+              >
+                <td className="px-4 py-3"><span className="font-medium hover:underline">{c.nome_razao_social}</span></td>
                 <td className="px-4 py-3 text-[#6E7280]">{c.tipo === "pessoa_fisica" ? "PF" : "PJ"}</td>
                 <td className="px-4 py-3">{c.cpf_cnpj}</td>
                 <td className="px-4 py-3">{c.telefone_whatsapp}</td>
                 <td className="px-4 py-3">{c.cidade}</td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right" onClick={ev => ev.stopPropagation()}>
                   {c.telefone_whatsapp && <a href={whatsappLink(c.telefone_whatsapp)} target="_blank" className="mr-2 inline-flex items-center gap-1 rounded bg-emerald-500 px-2 py-1 text-xs text-white hover:bg-emerald-600"><MessageCircle className="h-3 w-3" /></a>}
                   <button onClick={() => { setEditing(c); setOpen(true); }} className="mr-2 text-xs font-medium text-[#213368] hover:underline">Editar</button>
                   <button onClick={() => excluir(c)} className="text-xs font-medium text-red-600 hover:underline">Excluir</button>

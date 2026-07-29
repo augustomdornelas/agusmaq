@@ -22,6 +22,7 @@ export type Database = {
           data_inicio: string
           data_prevista_devolucao: string
           desconto: number
+          destino: string | null
           forma_pagamento: string
           id: string
           numero: number
@@ -40,6 +41,7 @@ export type Database = {
           data_inicio: string
           data_prevista_devolucao: string
           desconto?: number
+          destino?: string | null
           forma_pagamento?: string
           id?: string
           numero?: number
@@ -58,6 +60,7 @@ export type Database = {
           data_inicio?: string
           data_prevista_devolucao?: string
           desconto?: number
+          destino?: string | null
           forma_pagamento?: string
           id?: string
           numero?: number
@@ -270,8 +273,11 @@ export type Database = {
           created_at: string
           data_compra: string | null
           descricao: string
+          exibir_catalogo: boolean
           foto_url: string
           id: string
+          local_atual_id: string | null
+          local_base_id: string | null
           nome: string
           observacoes: string
           quantidade_total: number
@@ -289,8 +295,11 @@ export type Database = {
           created_at?: string
           data_compra?: string | null
           descricao?: string
+          exibir_catalogo?: boolean
           foto_url?: string
           id?: string
+          local_atual_id?: string | null
+          local_base_id?: string | null
           nome: string
           observacoes?: string
           quantidade_total?: number
@@ -308,8 +317,11 @@ export type Database = {
           created_at?: string
           data_compra?: string | null
           descricao?: string
+          exibir_catalogo?: boolean
           foto_url?: string
           id?: string
+          local_atual_id?: string | null
+          local_base_id?: string | null
           nome?: string
           observacoes?: string
           quantidade_total?: number
@@ -328,40 +340,90 @@ export type Database = {
             referencedRelation: "categorias"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "equipamentos_local_atual_id_fkey"
+            columns: ["local_atual_id"]
+            isOneToOne: false
+            referencedRelation: "locais_equipamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipamentos_local_base_id_fkey"
+            columns: ["local_base_id"]
+            isOneToOne: false
+            referencedRelation: "locais_equipamentos"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      locais_equipamentos: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          tipo?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          tipo?: string
+        }
+        Relationships: []
       }
       manutencoes: {
         Row: {
+          anexos: Json
           created_at: string
           custo: number
+          custo_mao_obra: number
+          custo_pecas: number
           data_fim: string | null
           data_inicio: string
           descricao: string
           equipamento_id: string
           id: string
+          oficina: string | null
           status: string
+          tipo: string
           updated_at: string
         }
         Insert: {
+          anexos?: Json
           created_at?: string
           custo?: number
+          custo_mao_obra?: number
+          custo_pecas?: number
           data_fim?: string | null
           data_inicio: string
           descricao?: string
           equipamento_id: string
           id?: string
+          oficina?: string | null
           status?: string
+          tipo?: string
           updated_at?: string
         }
         Update: {
+          anexos?: Json
           created_at?: string
           custo?: number
+          custo_mao_obra?: number
+          custo_pecas?: number
           data_fim?: string | null
           data_inicio?: string
           descricao?: string
           equipamento_id?: string
           id?: string
+          oficina?: string | null
           status?: string
+          tipo?: string
           updated_at?: string
         }
         Relationships: [

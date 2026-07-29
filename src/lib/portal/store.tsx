@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type {
-  Aluguel, AluguelItem, Categoria, Cliente, ConfiguracoesEmpresa, Empresa, Equipamento, Manutencao, Pagamento, Usuario, UUID,
+  Aluguel, AluguelItem, Categoria, Cliente, ConfiguracoesEmpresa, Empresa, Equipamento, Local, Manutencao, ManutencaoAnexo, Pagamento, Usuario, UUID,
 } from "./types";
 import { todayISO } from "./format";
 
 export const FOTOS_BUCKET = "equipamentos";
+export const MANUTENCOES_ANEXOS_BUCKET = "manutencoes-anexos";
 const URL_EXPIRE = 60 * 60 * 24 * 365; // 1 ano
 
 interface DBState {
@@ -15,6 +16,7 @@ interface DBState {
   alugueis: Aluguel[];
   pagamentos: Pagamento[];
   manutencoes: Manutencao[];
+  locais: Local[];
   usuarios: Usuario[];
   empresa: Empresa;
   configEmpresa: ConfiguracoesEmpresa;
@@ -26,7 +28,7 @@ const EMPTY_CONFIG: ConfiguracoesEmpresa = {
 };
 
 const EMPTY: DBState = {
-  categorias: [], equipamentos: [], clientes: [], alugueis: [], pagamentos: [], manutencoes: [], usuarios: [],
+  categorias: [], equipamentos: [], clientes: [], alugueis: [], pagamentos: [], manutencoes: [], locais: [], usuarios: [],
   empresa: { nome: "Agusmaq Locações e Equipamentos", telefone: "", email: "", endereco: "Agudos, SP" },
   configEmpresa: EMPTY_CONFIG,
 };
@@ -75,6 +77,26 @@ export async function uploadFoto(file: Blob, ext = "jpg"): Promise<string> {
   return data.signedUrl;
 }
 
+function sanitizeFilename(name: string): string {
+  const safe = name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9.\-_]/g, "_");
+  return `${Date.now()}-${safe}`;
+}
+
+export async function uploadManutencaoAnexo(manutencaoId: string, file: File): Promise<ManutencaoAnexo> {
+  const path = `${manutencaoId}/${sanitizeFilename(file.name)}`;
+  const { error } = await supabase.storage.from(MANUTENCOES_ANEXOS_BUCKET).upload(path, file, {
+    contentType: file.type || "application/octet-stream", upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  return { name: file.name, path, size: file.size, type: file.type };
+}
+
+export async function getManutencaoAnexoUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(MANUTENCOES_ANEXOS_BUCKET).createSignedUrl(path, 600);
+  if (error || !data) throw new Error(error?.message ?? "Falha ao gerar link do anexo.");
+  return data.signedUrl;
+}
+
 // --- Store context ---
 type NovoAluguelInput = {
   id?: UUID;
@@ -92,8 +114,20 @@ type NovoAluguelInput = {
   itens: Omit<AluguelItem, "id" | "aluguel_id" | "subtotal">[];
 };
 
-type NovoEquipamento = Omit<Equipamento, "id" | "created_at" | "updated_at" | "valor_compra" | "data_compra"> &
-  Partial<Pick<Equipamento, "valor_compra" | "data_compra">>;
+type NovoEquipamento = Omit<Equipamento, "id" | "created_at" | "updated_at" | "valor_compra" | "data_compra" | "local_base_id" | "local_atual_id" | "exibir_catalogo"> &
+  Partial<Pick<Equipamento, "valor_compra" | "data_compra" | "local_base_id" | "local_atual_id" | "exibir_catalogo">>;
+
+type NovaManutencaoInput = Omit<Manutencao, "id" | "created_at" | "updated_at" | "custo" | "anexos" | "tipo" | "oficina" | "custo_pecas" | "custo_mao_obra"> &
+  Partial<Pick<Manutencao, "custo" | "anexos" | "tipo" | "oficina" | "custo_pecas" | "custo_mao_obra">>;
+
+type EncerrarManutencaoInput = {
+  data_fim: string;
+  custo_pecas: number;
+  custo_mao_obra: number;
+  oficina?: string | null;
+  descricao?: string;
+  anexos?: ManutencaoAnexo[];
+};
 
 interface StoreCtx {
   db: DBState;
@@ -103,6 +137,9 @@ interface StoreCtx {
   updateCategoria: (id: UUID, patch: Partial<Categoria>) => Promise<void>;
   deleteCategoria: (id: UUID) => Promise<void>;
   reorderCategoria: (id: UUID, dir: -1 | 1) => Promise<void>;
+  addLocal: (l: Omit<Local, "id" | "created_at">) => Promise<Local>;
+  updateLocal: (id: UUID, patch: Partial<Local>) => Promise<void>;
+  deleteLocal: (id: UUID) => Promise<void>;
   addEquipamento: (e: NovoEquipamento) => Promise<Equipamento>;
   updateEquipamento: (id: UUID, patch: Partial<Equipamento>) => Promise<void>;
   deleteEquipamento: (id: UUID) => Promise<void>;
@@ -114,8 +151,9 @@ interface StoreCtx {
   cancelarAluguel: (id: UUID) => Promise<void>;
   devolverAluguel: (id: UUID, data?: string) => Promise<void>;
   addPagamento: (p: Omit<Pagamento, "id" | "created_at">) => Promise<Pagamento>;
-  addManutencao: (m: Omit<Manutencao, "id" | "created_at" | "updated_at">) => Promise<Manutencao>;
+  addManutencao: (m: NovaManutencaoInput) => Promise<Manutencao>;
   concluirManutencao: (id: UUID, data_fim: string, custo: number) => Promise<void>;
+  encerrarManutencao: (id: UUID, patch: EncerrarManutencaoInput) => Promise<void>;
   deleteManutencao: (id: UUID) => Promise<void>;
   updateEmpresa: (e: Empresa) => Promise<void>;
   saveConfigEmpresa: (c: Partial<ConfiguracoesEmpresa>) => Promise<void>;
@@ -131,7 +169,7 @@ function must<T>(r: { data: T | null; error: any }): T {
 }
 
 async function fetchAll(): Promise<DBState> {
-  const [cats, eqs, cls, als, its, pgs, mns, emp, cfg, prof, roles] = await Promise.all([
+  const [cats, eqs, cls, als, its, pgs, mns, locs, emp, cfg, prof, roles] = await Promise.all([
     supabase.from("categorias").select("*").order("ordem"),
     supabase.from("equipamentos").select("*").order("nome"),
     supabase.from("clientes").select("*").order("nome_razao_social"),
@@ -139,6 +177,7 @@ async function fetchAll(): Promise<DBState> {
     supabase.from("aluguel_itens").select("*"),
     supabase.from("pagamentos").select("*"),
     supabase.from("manutencoes").select("*").order("data_inicio", { ascending: false }),
+    supabase.from("locais_equipamentos").select("*").order("nome"),
     supabase.from("empresa").select("*").eq("id", 1).maybeSingle(),
     (supabase.from as any)("configuracoes_empresa").select("*").eq("id", 1).maybeSingle(),
     supabase.from("profiles").select("*"),
@@ -168,7 +207,8 @@ async function fetchAll(): Promise<DBState> {
     clientes: (cls.data ?? []) as Cliente[],
     alugueis,
     pagamentos: (pgs.data ?? []) as Pagamento[],
-    manutencoes: (mns.data ?? []) as Manutencao[],
+    manutencoes: (mns.data ?? []) as unknown as Manutencao[],
+    locais: (locs.data ?? []) as Local[],
     usuarios,
     empresa: (emp.data as any) ?? EMPTY.empresa,
     configEmpresa: ((cfg as any)?.data as ConfiguracoesEmpresa) ?? EMPTY_CONFIG,
@@ -218,6 +258,22 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
         supabase.from("categorias").update({ ordem: b.ordem }).eq("id", a.id),
         supabase.from("categorias").update({ ordem: a.ordem }).eq("id", b.id),
       ]);
+      await reload();
+    },
+
+    addLocal: async (l) => {
+      const row = must(await supabase.from("locais_equipamentos").insert(l).select().single());
+      await reload();
+      return row as unknown as Local;
+    },
+    updateLocal: async (id, patch) => {
+      const { id: _i, created_at: _c, ...rest } = patch as any;
+      must(await supabase.from("locais_equipamentos").update(rest).eq("id", id).select().single());
+      await reload();
+    },
+    deleteLocal: async (id) => {
+      const { error } = await supabase.from("locais_equipamentos").delete().eq("id", id);
+      if (error) throw new Error(error.message);
       await reload();
     },
 
@@ -344,8 +400,18 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
     },
 
     addManutencao: async (m) => {
-      const row = must(await supabase.from("manutencoes").insert(m).select().single()) as any;
-      if (m.status === "em_andamento") {
+      const custo_pecas = m.custo_pecas ?? m.custo ?? 0;
+      const custo_mao_obra = m.custo_mao_obra ?? 0;
+      const payload = {
+        ...m,
+        tipo: m.tipo ?? "preventiva",
+        custo_pecas,
+        custo_mao_obra,
+        custo: custo_pecas + custo_mao_obra,
+        anexos: m.anexos ?? [],
+      };
+      const row = must(await supabase.from("manutencoes").insert(payload as any).select().single()) as any;
+      if (m.status === "em_andamento" || m.status === "aberta") {
         await supabase.from("equipamentos").update({ status: "manutencao" }).eq("id", m.equipamento_id);
       }
       await reload();
@@ -354,6 +420,28 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
     concluirManutencao: async (id, data_fim, custo) => {
       const m = db.manutencoes.find(x => x.id === id);
       must(await supabase.from("manutencoes").update({ status: "concluida", data_fim, custo }).eq("id", id).select().single());
+      if (m) {
+        const eq = db.equipamentos.find(e => e.id === m.equipamento_id);
+        if (eq && eq.status === "manutencao") {
+          await supabase.from("equipamentos").update({ status: "disponivel" }).eq("id", eq.id);
+        }
+      }
+      await reload();
+    },
+    encerrarManutencao: async (id, patch) => {
+      const m = db.manutencoes.find(x => x.id === id);
+      const custo = patch.custo_pecas + patch.custo_mao_obra;
+      const updatePayload: any = {
+        status: "concluida",
+        data_fim: patch.data_fim,
+        custo_pecas: patch.custo_pecas,
+        custo_mao_obra: patch.custo_mao_obra,
+        custo,
+      };
+      if (patch.oficina !== undefined) updatePayload.oficina = patch.oficina;
+      if (patch.descricao !== undefined) updatePayload.descricao = patch.descricao;
+      if (patch.anexos !== undefined) updatePayload.anexos = patch.anexos;
+      must(await supabase.from("manutencoes").update(updatePayload).eq("id", id).select().single());
       if (m) {
         const eq = db.equipamentos.find(e => e.id === m.equipamento_id);
         if (eq && eq.status === "manutencao") {
@@ -416,13 +504,17 @@ export interface EquipStats {
   receita_media_mensal: number;
   n_alugueis: number;
   dias_alugado: number;
+  dias_manutencao: number;
+  dias_disponivel: number;
   taxa_ocupacao: number; // 0..1
   ticket_medio: number;
-  roi_pct: number; // % da receita sobre valor de compra
-  payback_pct: number; // 0..1 (>=1 pago)
+  custo_manutencao: number;
+  liquido: number; // receita_total - custo_manutencao
+  roi_pct: number; // % líquido (receita - custo manutenção) sobre valor de compra
+  payback_pct: number; // 0..1+ (>=1 pago), baseado na receita bruta
   meses_para_payback: number | null;
   data_pago_em: string | null;
-  por_mes: { mes: string; receita: number; dias: number }[]; // últimos 12
+  por_mes: { mes: string; receita: number; custo: number; dias: number; acumulado: number }[]; // últimos 12
 }
 
 function diffDaysISO(a: string, b: string): number {
@@ -444,8 +536,11 @@ function last12Months(): string[] {
   return out;
 }
 
-export function computeEquipStats(eq: Equipamento, alugueis: Aluguel[]): EquipStats {
+export function computeEquipStats(eq: Equipamento, alugueis: Aluguel[], manutencoes: Manutencao[] = []): EquipStats {
   const relevantes = alugueis.filter(a => a.status !== "cancelado" && a.itens.some(i => i.equipamento_id === eq.id));
+  const manRelevantes = manutencoes.filter(m => m.equipamento_id === eq.id);
+  const hoje = todayISO();
+
   let receita_total = 0;
   let dias_alugado = 0;
   const porMesMap = new Map<string, { receita: number; dias: number }>();
@@ -464,13 +559,27 @@ export function computeEquipStats(eq: Equipamento, alugueis: Aluguel[]): EquipSt
   const n_alugueis = relevantes.length;
   const ticket_medio = n_alugueis ? receita_total / n_alugueis : 0;
 
-  const inicio = eq.data_compra || relevantes.map(a => a.data_inicio).sort()[0] || eq.created_at.slice(0, 10);
-  const meses = Math.max(1, diffDaysISO(inicio, todayISO()) / 30);
+  let custo_manutencao = 0;
+  let dias_manutencao = 0;
+  const custoMesMap = new Map<string, number>();
+  for (const m of manRelevantes) {
+    custo_manutencao += Number(m.custo || 0);
+    dias_manutencao += diffDaysISO(m.data_inicio, m.data_fim || hoje);
+    const key = monthKey(m.data_inicio);
+    custoMesMap.set(key, (custoMesMap.get(key) ?? 0) + Number(m.custo || 0));
+  }
+
+  const primeiraData = [...relevantes.map(a => a.data_inicio), ...manRelevantes.map(m => m.data_inicio)].sort()[0];
+  const inicio = eq.data_compra || primeiraData || eq.created_at.slice(0, 10);
+  const totalDias = Math.max(1, diffDaysISO(inicio, hoje));
+  const meses = Math.max(1, totalDias / 30);
   const receita_media_mensal = receita_total / meses;
-  const taxa_ocupacao = Math.min(1, dias_alugado / Math.max(1, diffDaysISO(inicio, todayISO())));
+  const taxa_ocupacao = Math.min(1, dias_alugado / totalDias);
+  const dias_disponivel = Math.max(0, totalDias - dias_alugado - dias_manutencao);
 
   const valorCompra = Number(eq.valor_compra || 0);
-  const roi_pct = valorCompra > 0 ? (receita_total / valorCompra) * 100 : 0;
+  const liquido = receita_total - custo_manutencao;
+  const roi_pct = valorCompra > 0 ? (liquido / valorCompra) * 100 : 0;
   const payback_pct = valorCompra > 0 ? receita_total / valorCompra : 0;
   const meses_para_payback = valorCompra > 0 && payback_pct < 1 && receita_media_mensal > 0
     ? Math.ceil((valorCompra - receita_total) / receita_media_mensal) : null;
@@ -489,9 +598,17 @@ export function computeEquipStats(eq: Equipamento, alugueis: Aluguel[]): EquipSt
   }
 
   const meses12 = last12Months();
-  const por_mes = meses12.map(m => ({ mes: m, receita: porMesMap.get(m)?.receita ?? 0, dias: porMesMap.get(m)?.dias ?? 0 }));
+  let acumulado = 0;
+  const por_mes = meses12.map(m => {
+    const receita = porMesMap.get(m)?.receita ?? 0;
+    acumulado += receita;
+    return { mes: m, receita, custo: custoMesMap.get(m) ?? 0, dias: porMesMap.get(m)?.dias ?? 0, acumulado };
+  });
 
-  return { receita_total, receita_media_mensal, n_alugueis, dias_alugado, taxa_ocupacao, ticket_medio, roi_pct, payback_pct, meses_para_payback, data_pago_em, por_mes };
+  return {
+    receita_total, receita_media_mensal, n_alugueis, dias_alugado, dias_manutencao, dias_disponivel,
+    taxa_ocupacao, ticket_medio, custo_manutencao, liquido, roi_pct, payback_pct, meses_para_payback, data_pago_em, por_mes,
+  };
 }
 
 export interface ClienteStats {

@@ -18,8 +18,12 @@ const map: Record<string, { label: string; cls: string }> = {
   parcial: { label: "Parcial", cls: "bg-amber-100 text-amber-800 border-amber-200" },
   pago: { label: "Pago", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
   // manutencao
-  em_andamento: { label: "Em andamento", cls: "bg-amber-100 text-amber-800 border-amber-200" },
+  aberta: { label: "Aberta", cls: "bg-amber-100 text-amber-800 border-amber-200" },
+  em_andamento: { label: "Em andamento", cls: "bg-blue-100 text-blue-800 border-blue-200" },
   concluida: { label: "Concluída", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  preventiva: { label: "Preventiva", cls: "bg-blue-100 text-blue-800 border-blue-200" },
+  corretiva: { label: "Corretiva", cls: "bg-amber-100 text-amber-800 border-amber-200" },
+  emergencial: { label: "Emergencial", cls: "bg-red-100 text-red-800 border-red-200" },
 };
 
 export function StatusBadge({ status }: { status: string }) {

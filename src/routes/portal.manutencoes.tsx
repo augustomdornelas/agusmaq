@@ -34,7 +34,7 @@ function ManutPage() {
     <PortalLayout title="Manutenções">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <select value={st} onChange={e => setSt(e.target.value)} className="rounded-md border bg-white px-3 py-2 text-sm">
-          <option value="">Todos status</option><option value="em_andamento">Em andamento</option><option value="concluida">Concluídas</option>
+          <option value="">Todos status</option><option value="aberta">Abertas</option><option value="em_andamento">Em andamento</option><option value="concluida">Concluídas</option>
         </select>
         <select value={eq} onChange={e => setEq(e.target.value)} className="rounded-md border bg-white px-3 py-2 text-sm">
           <option value="">Todos equipamentos</option>

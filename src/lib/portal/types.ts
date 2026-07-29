@@ -6,7 +6,9 @@ export type TipoCobranca = "diaria" | "semanal" | "mensal";
 export type AluguelStatus = "orcamento" | "reservado" | "ativo" | "devolvido" | "atrasado" | "cancelado";
 export type FormaPagamento = "dinheiro" | "pix" | "cartao" | "boleto";
 export type StatusPagamento = "pendente" | "parcial" | "pago";
-export type ManutencaoStatus = "em_andamento" | "concluida";
+export type ManutencaoStatus = "aberta" | "em_andamento" | "concluida";
+export type ManutencaoTipo = "preventiva" | "corretiva" | "emergencial";
+export type LocalTipo = "Base" | "Almoxarifado" | "Obra";
 
 export interface Categoria {
   id: UUID;
@@ -16,6 +18,13 @@ export interface Categoria {
   ativa: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface Local {
+  id: UUID;
+  nome: string;
+  tipo: LocalTipo;
+  created_at: string;
 }
 
 export interface Equipamento {
@@ -34,6 +43,9 @@ export interface Equipamento {
   quantidade_total: number;
   status: EquipamentoStatus;
   observacoes: string;
+  local_base_id: UUID | null;
+  local_atual_id: UUID | null;
+  exibir_catalogo: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -66,6 +78,7 @@ export interface Aluguel {
   id: UUID;
   numero: number;
   cliente_id: UUID;
+  destino: string | null;
   data_inicio: string;
   data_prevista_devolucao: string;
   data_devolucao_real: string | null;
@@ -92,14 +105,26 @@ export interface Pagamento {
   created_at: string;
 }
 
+export interface ManutencaoAnexo {
+  name: string;
+  path: string;
+  size?: number;
+  type?: string;
+}
+
 export interface Manutencao {
   id: UUID;
   equipamento_id: UUID;
+  tipo: ManutencaoTipo;
   data_inicio: string;
   data_fim: string | null;
   descricao: string;
+  oficina: string | null;
+  custo_pecas: number;
+  custo_mao_obra: number;
   custo: number;
   status: ManutencaoStatus;
+  anexos: ManutencaoAnexo[];
   created_at: string;
   updated_at: string;
 }

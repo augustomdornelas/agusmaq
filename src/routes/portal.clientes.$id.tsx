@@ -90,7 +90,7 @@ function ClienteDetail() {
 
           <div className="rounded-lg bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-[#213368]">Histórico completo</h3>
-            {alugueis.length === 0 ? <p className="text-sm text-[#6E7280]">Nenhum aluguel.</p> : (
+            {alugueis.length === 0 ? <p className="text-sm text-[#6E7280]">Nenhum aluguel registrado ainda.</p> : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="text-left text-xs text-[#6E7280]"><tr><th className="py-2">Nº</th><th>Data</th><th>Equipamentos</th><th>Período</th><th className="text-right">Valor</th><th>Status</th><th></th></tr></thead>
