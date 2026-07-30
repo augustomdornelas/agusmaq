@@ -58,3 +58,15 @@ export function pct(v: number, digits = 1): string {
 export function normalizeSearch(s: string): string {
   return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
+
+/**
+ * Alguns equipamentos foram cadastrados fora do formulário com todos os
+ * códigos amontoados em codigo_patrimonio, separados por vírgula (ex.:
+ * "GRD 156, GRD 093, GRD 348"). Por isso o fallback faz split por vírgula
+ * em vez de tratar a string inteira como um único código.
+ */
+export function codigosEquipamento(e: { codigos_patrimonio?: string[]; codigo_patrimonio: string }): string[] {
+  if (e.codigos_patrimonio && e.codigos_patrimonio.length) return e.codigos_patrimonio;
+  if (!e.codigo_patrimonio) return [];
+  return e.codigo_patrimonio.split(",").map(c => c.trim()).filter(Boolean);
+}

@@ -150,6 +150,7 @@ export interface OrcamentoItem {
   desconto_valor: number;
   valor_total: number;
   ordem: number;
+  unidades_codigos?: string[];
 }
 
 export interface Orcamento {

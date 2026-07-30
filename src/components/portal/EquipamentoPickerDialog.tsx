@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import { Search, X, Image as ImageIcon, Check } from "lucide-react";
-import { money, normalizeSearch } from "@/lib/portal/format";
+import { money, normalizeSearch, codigosEquipamento } from "@/lib/portal/format";
 import type { Categoria, Equipamento } from "@/lib/portal/types";
+
+export interface EquipamentoSelecao {
+  equipamentoId: string;
+  codigos: string[];
+}
 
 export function EquipamentoPickerDialog({
   equipamentos, categorias, jaAdicionados, onClose, onAdd,
@@ -10,11 +15,11 @@ export function EquipamentoPickerDialog({
   categorias: Categoria[];
   jaAdicionados: string[];
   onClose: () => void;
-  onAdd: (ids: string[]) => void;
+  onAdd: (selecoes: EquipamentoSelecao[]) => void;
 }) {
   const [q, setQ] = useState("");
   const [catF, setCatF] = useState("todas");
-  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [sel, setSel] = useState<Map<string, Set<string>>>(new Map());
 
   const nomeCategoria = (id: string) => categorias.find(c => c.id === id)?.nome ?? "";
 
@@ -25,7 +30,7 @@ export function EquipamentoPickerDialog({
       .filter(e => catF === "todas" || e.categoria_id === catF)
       .filter(e => {
         if (!nq) return true;
-        const codes = (e.codigos_patrimonio && e.codigos_patrimonio.length) ? e.codigos_patrimonio : (e.codigo_patrimonio ? [e.codigo_patrimonio] : []);
+        const codes = codigosEquipamento(e);
         return normalizeSearch(e.nome).includes(nq)
           || codes.some(c => normalizeSearch(c).includes(nq))
           || normalizeSearch(nomeCategoria(e.categoria_id)).includes(nq);
@@ -33,17 +38,36 @@ export function EquipamentoPickerDialog({
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [equipamentos, q, catF, categorias]);
 
-  function toggle(id: string) {
+  const totalUnidades = useMemo(
+    () => Array.from(sel.values()).reduce((s, codes) => s + Math.max(1, codes.size), 0),
+    [sel],
+  );
+
+  function toggleCard(equipId: string, codes: string[]) {
     setSel(prev => {
-      const s = new Set(prev);
-      s.has(id) ? s.delete(id) : s.add(id);
-      return s;
+      const next = new Map(prev);
+      if (next.has(equipId)) {
+        next.delete(equipId);
+      } else {
+        next.set(equipId, new Set(codes.length === 1 ? [codes[0]] : []));
+      }
+      return next;
+    });
+  }
+
+  function toggleCodigo(equipId: string, codigo: string) {
+    setSel(prev => {
+      const next = new Map(prev);
+      const cur = new Set(next.get(equipId) ?? []);
+      cur.has(codigo) ? cur.delete(codigo) : cur.add(codigo);
+      next.set(equipId, cur);
+      return next;
     });
   }
 
   function confirmar() {
     if (sel.size === 0) return;
-    onAdd(Array.from(sel));
+    onAdd(Array.from(sel.entries()).map(([equipamentoId, codes]) => ({ equipamentoId, codigos: Array.from(codes) })));
   }
 
   return (
@@ -71,15 +95,15 @@ export function EquipamentoPickerDialog({
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {results.map(e => {
                 const added = jaAdicionados.includes(e.id);
+                const codes = codigosEquipamento(e);
+                const multi = codes.length > 1;
+                const codigosSel = sel.get(e.id);
                 const checked = sel.has(e.id);
-                const codes = (e.codigos_patrimonio && e.codigos_patrimonio.length) ? e.codigos_patrimonio : (e.codigo_patrimonio ? [e.codigo_patrimonio] : []);
                 return (
-                  <button
+                  <div
                     key={e.id}
-                    type="button"
-                    disabled={added}
-                    onClick={() => toggle(e.id)}
-                    className={`relative overflow-hidden rounded-lg border text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${checked ? "border-[#F37032] ring-2 ring-[#F37032]/40" : "border-gray-200 hover:border-[#F37032]"}`}
+                    onClick={() => !added && toggleCard(e.id, codes)}
+                    className={`relative overflow-hidden rounded-lg border text-left transition ${added ? "cursor-not-allowed opacity-50" : "cursor-pointer"} ${checked ? "border-[#F37032] ring-2 ring-[#F37032]/40" : "border-gray-200 hover:border-[#F37032]"}`}
                   >
                     <div className="relative aspect-[4/3] bg-[#F4F4F4]">
                       {e.foto_url ? (
@@ -98,22 +122,44 @@ export function EquipamentoPickerDialog({
                     <div className="p-2.5">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-[#F37032]">{nomeCategoria(e.categoria_id)}</p>
                       <p className="line-clamp-1 text-sm font-bold text-[#213368]">{e.nome}</p>
-                      <p className="mt-0.5 font-mono text-xs text-[#6E7280]">{codes[0] ?? "—"}</p>
+                      {multi ? (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {codes.map(c => {
+                            const on = codigosSel?.has(c) ?? false;
+                            return (
+                              <button
+                                key={c}
+                                type="button"
+                                disabled={added}
+                                onClick={ev => { ev.stopPropagation(); toggleCodigo(e.id, c); }}
+                                className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold transition disabled:cursor-not-allowed ${on ? "bg-[#F37032] text-white" : "bg-[#213368]/10 text-[#213368] hover:bg-[#213368]/20"}`}
+                              >
+                                {c}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="mt-0.5 font-mono text-xs text-[#6E7280]">{codes[0] ?? "—"}</p>
+                      )}
                       <p className="mt-1 text-sm font-semibold text-[#F37032]">{money(e.valor_diaria)}<span className="text-[10px] font-normal text-[#6E7280]">/dia</span></p>
                       {added && <p className="mt-1 text-[10px] font-semibold text-emerald-700">Já adicionado</p>}
+                      {!added && multi && checked && (codigosSel?.size ?? 0) === 0 && (
+                        <p className="mt-1 text-[10px] text-[#6E7280]">Nenhum código marcado — conta como 1 unidade.</p>
+                      )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
           )}
         </div>
         <div className="flex items-center justify-between border-t px-5 py-3">
-          <span className="text-sm text-[#6E7280]">{sel.size} selecionado{sel.size !== 1 ? "s" : ""}</span>
+          <span className="text-sm text-[#6E7280]">{totalUnidades} unidade{totalUnidades !== 1 ? "s" : ""} selecionada{totalUnidades !== 1 ? "s" : ""}</span>
           <div className="flex gap-2">
             <button onClick={onClose} className="rounded-md border px-4 py-2 text-sm">Cancelar</button>
             <button onClick={confirmar} disabled={sel.size === 0} className="rounded-md bg-[#F37032] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db5f22] disabled:opacity-50">
-              Adicionar {sel.size > 0 ? `(${sel.size})` : ""}
+              Adicionar {totalUnidades > 0 ? `(${totalUnidades})` : ""}
             </button>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { money, dateBR } from "./format";
-import { computeItemTotal } from "./orcamentoCalc";
+import { computeItemTotal, descricaoComCodigos } from "./orcamentoCalc";
 import type { Cliente, ConfiguracoesEmpresa, Equipamento, Orcamento } from "./types";
 
 async function loadImageAsDataUrl(url: string): Promise<string | null> {
@@ -114,7 +114,7 @@ export async function gerarOrcamentoPdf(
     body: o.itens.map((it, idx) => {
       const total = computeItemTotal(it);
       const desconto = it.desconto_valor > 0 ? (it.desconto_tipo === "percentual" ? `${it.desconto_valor}%` : money(it.desconto_valor)) : "—";
-      return ["", it.descricao, String(it.quantidade), money(it.valor_unitario), desconto, money(total)];
+      return ["", descricaoComCodigos(it), String(it.quantidade), money(it.valor_unitario), desconto, money(total)];
     }),
     styles: { fontSize: 8.5, cellPadding: 2, valign: "middle" },
     headStyles: { fillColor: [244, 244, 244], textColor: [33, 51, 104], fontStyle: "bold" },

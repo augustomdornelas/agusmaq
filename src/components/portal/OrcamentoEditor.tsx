@@ -3,9 +3,9 @@ import { useBlocker } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Search, UserPlus, X, Plus, Trash2, ArrowUp, ArrowDown, Image as ImageIcon } from "lucide-react";
 import { useStore } from "@/lib/portal/store";
-import { money, todayISO, addDays, normalizeSearch } from "@/lib/portal/format";
+import { money, todayISO, addDays, normalizeSearch, codigosEquipamento } from "@/lib/portal/format";
 import { computeItemTotal, computeOrcamentoTotals, diasEntre, valorPorTipoCobranca } from "@/lib/portal/orcamentoCalc";
-import { EquipamentoPickerDialog } from "@/components/portal/EquipamentoPickerDialog";
+import { EquipamentoPickerDialog, type EquipamentoSelecao } from "@/components/portal/EquipamentoPickerDialog";
 import { NovoClienteModal } from "@/routes/portal.alugueis.novo";
 import type { Cliente, DescontoTipo, Equipamento, Orcamento, TipoCobranca } from "@/lib/portal/types";
 
@@ -17,19 +17,23 @@ interface ItemForm {
   valor_unitario: number;
   desconto_tipo: DescontoTipo;
   desconto_valor: number;
+  unidades_codigos: string[];
 }
 
-function itemFromEquip(equipamentoId: string, tipoCobranca: TipoCobranca, equipamentos: Equipamento[]): ItemForm {
-  const eq = equipamentos.find(e => e.id === equipamentoId)!;
-  const codes = (eq.codigos_patrimonio && eq.codigos_patrimonio.length) ? eq.codigos_patrimonio : (eq.codigo_patrimonio ? [eq.codigo_patrimonio] : []);
+function itemFromEquip(sel: EquipamentoSelecao, tipoCobranca: TipoCobranca, equipamentos: Equipamento[]): ItemForm {
+  const eq = equipamentos.find(e => e.id === sel.equipamentoId)!;
+  const allCodes = codigosEquipamento(eq);
+  const multi = allCodes.length > 1;
+  const chosen = multi ? sel.codigos : [];
   return {
     key: crypto.randomUUID(),
     equipamento_id: eq.id,
-    descricao: `${eq.nome}${codes[0] ? " — " + codes[0] : ""}`,
-    quantidade: 1,
+    descricao: multi ? eq.nome : `${eq.nome}${allCodes[0] ? " — " + allCodes[0] : ""}`,
+    quantidade: multi ? Math.max(1, chosen.length) : 1,
     valor_unitario: valorPorTipoCobranca(eq, tipoCobranca),
     desconto_tipo: "valor",
     desconto_valor: 0,
+    unidades_codigos: chosen,
   };
 }
 
@@ -50,6 +54,7 @@ export function OrcamentoEditor({ initial, onSaved }: { initial: Orcamento | nul
       key: it.id, equipamento_id: it.equipamento_id, descricao: it.descricao,
       quantidade: it.quantidade, valor_unitario: it.valor_unitario,
       desconto_tipo: it.desconto_tipo, desconto_valor: it.desconto_valor,
+      unidades_codigos: it.unidades_codigos ?? [],
     })),
   );
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -100,8 +105,11 @@ export function OrcamentoEditor({ initial, onSaved }: { initial: Orcamento | nul
     setDirty(true);
   }
 
-  function addItens(ids: string[]) {
-    setItens(prev => [...prev, ...ids.filter(id => !prev.some(p => p.equipamento_id === id)).map(id => itemFromEquip(id, tipoCobranca, db.equipamentos))]);
+  function addItens(selecoes: EquipamentoSelecao[]) {
+    setItens(prev => [
+      ...prev,
+      ...selecoes.filter(s => !prev.some(p => p.equipamento_id === s.equipamentoId)).map(s => itemFromEquip(s, tipoCobranca, db.equipamentos)),
+    ]);
     setPickerOpen(false);
     setDirty(true);
   }
@@ -142,6 +150,7 @@ export function OrcamentoEditor({ initial, onSaved }: { initial: Orcamento | nul
         itens: itens.map((it, idx) => ({
           equipamento_id: it.equipamento_id, descricao: it.descricao, quantidade: it.quantidade,
           valor_unitario: it.valor_unitario, desconto_tipo: it.desconto_tipo, desconto_valor: it.desconto_valor, ordem: idx,
+          unidades_codigos: it.unidades_codigos,
         })),
       });
       setCurrentStatus(status);
@@ -245,16 +254,42 @@ export function OrcamentoEditor({ initial, onSaved }: { initial: Orcamento | nul
             {itens.map((it, idx) => {
               const eq = db.equipamentos.find(e => e.id === it.equipamento_id);
               const total = computeItemTotal(it);
+              const allCodes = eq ? codigosEquipamento(eq) : [];
+              const multi = allCodes.length > 1;
               return (
                 <div key={it.key} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
                   <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-[#F4F4F4]">
                     {eq?.foto_url ? <img src={eq.foto_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><ImageIcon className="h-5 w-5 text-[#6E7280] opacity-40" /></div>}
                   </div>
-                  <div className="min-w-[140px] flex-1">
+                  <div className="min-w-[160px] flex-1">
                     <p className="line-clamp-1 text-sm font-semibold text-[#213368]">{it.descricao}</p>
+                    {multi && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {allCodes.map(c => {
+                          const on = it.unidades_codigos.includes(c);
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => {
+                                const next = on ? it.unidades_codigos.filter(x => x !== c) : [...it.unidades_codigos, c];
+                                updItem(it.key, { unidades_codigos: next, quantidade: Math.max(1, next.length) });
+                              }}
+                              className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold transition ${on ? "bg-[#F37032] text-white" : "bg-[#213368]/10 text-[#213368] hover:bg-[#213368]/20"}`}
+                            >
+                              {c}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                  <input type="number" min={1} value={it.quantidade} onChange={e => updItem(it.key, { quantidade: Math.max(1, Number(e.target.value)) })}
-                    className="w-16 rounded-md border px-2 py-1.5 text-sm" title="Quantidade" />
+                  {multi ? (
+                    <span className="w-16 rounded-md border bg-[#F4F4F4] px-2 py-1.5 text-center text-sm text-[#213368]" title="Quantidade derivada dos códigos selecionados">{it.quantidade} un.</span>
+                  ) : (
+                    <input type="number" min={1} value={it.quantidade} onChange={e => updItem(it.key, { quantidade: Math.max(1, Number(e.target.value)) })}
+                      className="w-16 rounded-md border px-2 py-1.5 text-sm" title="Quantidade" />
+                  )}
                   <input type="number" min={0} step="0.01" value={it.valor_unitario} onChange={e => updItem(it.key, { valor_unitario: Math.max(0, Number(e.target.value)) })}
                     className="w-24 rounded-md border px-2 py-1.5 text-sm" title="Valor unitário" />
                   <select value={it.desconto_tipo} onChange={e => updItem(it.key, { desconto_tipo: e.target.value as DescontoTipo })} className="rounded-md border px-1 py-1.5 text-xs">

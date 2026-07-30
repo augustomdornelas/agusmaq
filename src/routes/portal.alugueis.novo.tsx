@@ -20,7 +20,7 @@ export const Route = createFileRoute("/portal/alugueis/novo")({
   component: NovoAluguelWizard,
 });
 
-type Item = { equipamento_id: string; quantidade: number; tipo_periodo: TipoCobranca; valor_unitario: number };
+type Item = { equipamento_id: string; quantidade: number; tipo_periodo: TipoCobranca; valor_unitario: number; unidades_codigos: string[] };
 
 function NovoAluguelWizard() {
   const { clienteId: initCli, equipId, orcamentoId } = Route.useSearch();
@@ -37,11 +37,12 @@ function NovoAluguelWizard() {
         quantidade: it.quantidade,
         tipo_periodo: orcamento.tipo_cobranca,
         valor_unitario: it.quantidade > 0 ? computeItemTotal(it) / it.quantidade : it.valor_unitario,
+        unidades_codigos: it.unidades_codigos ?? [],
       }));
     }
     if (equipId) {
       const e = db.equipamentos.find(x => x.id === equipId);
-      if (e) return [{ equipamento_id: e.id, quantidade: 1, tipo_periodo: "diaria", valor_unitario: Number(e.valor_diaria) }];
+      if (e) return [{ equipamento_id: e.id, quantidade: 1, tipo_periodo: "diaria", valor_unitario: Number(e.valor_diaria), unidades_codigos: [] }];
     }
     return [];
   });
@@ -59,7 +60,7 @@ function NovoAluguelWizard() {
     const eq = db.equipamentos.find(e => e.id === equipamento_id);
     if (!eq) return;
     if (itens.find(i => i.equipamento_id === equipamento_id)) return toast.error("Equipamento já adicionado.");
-    setItens(prev => [...prev, { equipamento_id, quantidade: 1, tipo_periodo: "diaria", valor_unitario: Number(eq.valor_diaria) }]);
+    setItens(prev => [...prev, { equipamento_id, quantidade: 1, tipo_periodo: "diaria", valor_unitario: Number(eq.valor_diaria), unidades_codigos: [] }]);
   }
   function updItem(i: number, patch: Partial<Item>) {
     setItens(prev => prev.map((it, idx) => {
@@ -84,7 +85,7 @@ function NovoAluguelWizard() {
         tipo_cobranca: tipo_predom, status: "ativo", desconto,
         valor_frete: orcamento?.valor_frete ?? 0,
         observacoes,
-        itens: itens.map(i => ({ equipamento_id: i.equipamento_id, quantidade: i.quantidade, valor_unitario: i.valor_unitario })),
+        itens: itens.map(i => ({ equipamento_id: i.equipamento_id, quantidade: i.quantidade, valor_unitario: i.valor_unitario, unidades_codigos: i.unidades_codigos })),
       });
       if (orcamentoId) await vincularAluguelAoOrcamento(orcamentoId, a.id);
       toast.success("Aluguel criado!");

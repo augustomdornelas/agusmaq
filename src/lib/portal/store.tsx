@@ -479,6 +479,7 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
         quantidade: i.quantidade, valor_unitario: i.valor_unitario,
         desconto_tipo: i.desconto_tipo, desconto_valor: i.desconto_valor,
         valor_total: computeItemTotal(i), ordem: i.ordem ?? idx,
+        unidades_codigos: i.unidades_codigos ?? [],
       }));
       if (itensRows.length) must(await (supabase.from as any)("orcamento_itens").insert(itensRows).select());
       await reload();
@@ -516,6 +517,7 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
         quantidade: i.quantidade, valor_unitario: i.valor_unitario,
         desconto_tipo: i.desconto_tipo, desconto_valor: i.desconto_valor,
         valor_total: i.valor_total, ordem: i.ordem ?? idx,
+        unidades_codigos: i.unidades_codigos ?? [],
       }));
       if (itensRows.length) must(await (supabase.from as any)("orcamento_itens").insert(itensRows).select());
       await reload();

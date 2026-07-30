@@ -42,6 +42,10 @@ export function computeOrcamentoTotals(
   return { subtotal, valor_desconto, valor_total };
 }
 
+export function descricaoComCodigos(it: { descricao: string; unidades_codigos?: string[] }): string {
+  return it.unidades_codigos && it.unidades_codigos.length ? `${it.descricao} — ${it.unidades_codigos.join(", ")}` : it.descricao;
+}
+
 export function diasEntre(inicio: string, fim: string): number {
   const d1 = new Date(inicio + "T00:00:00").getTime();
   const d2 = new Date(fim + "T00:00:00").getTime();

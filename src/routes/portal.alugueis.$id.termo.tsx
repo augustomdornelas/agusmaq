@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useStore } from "@/lib/portal/store";
-import { dateBR, money } from "@/lib/portal/format";
+import { dateBR, money, codigosEquipamento } from "@/lib/portal/format";
 import { ArrowLeft, Printer, Eraser } from "lucide-react";
 
 export const Route = createFileRoute("/portal/alugueis/$id/termo")({
@@ -73,7 +73,7 @@ function TermoPage() {
           {a.itens.map(it => {
             const eq = db.equipamentos.find(e => e.id === it.equipamento_id);
             if (!eq) return null;
-            const codes = (eq.codigos_patrimonio && eq.codigos_patrimonio.length) ? eq.codigos_patrimonio : (eq.codigo_patrimonio ? [eq.codigo_patrimonio] : []);
+            const codes = codigosEquipamento(eq);
             const sel = unidadesSel[it.id] ?? (it.unidades_codigos ?? []);
             if (codes.length <= 1) return null;
             return (
@@ -96,7 +96,7 @@ function TermoPage() {
           })}
           {a.itens.every(it => {
             const eq = db.equipamentos.find(e => e.id === it.equipamento_id);
-            const codes = eq ? ((eq.codigos_patrimonio && eq.codigos_patrimonio.length) ? eq.codigos_patrimonio : (eq.codigo_patrimonio ? [eq.codigo_patrimonio] : [])) : [];
+            const codes = eq ? codigosEquipamento(eq) : [];
             return codes.length <= 1;
           }) && <p className="text-xs text-[#6E7280]">Nenhum item tem múltiplos códigos.</p>}
         </div>
@@ -150,7 +150,7 @@ function TermoPage() {
             <tbody>
               {a.itens.map(it => {
                 const eq = db.equipamentos.find(e => e.id === it.equipamento_id);
-                const codes = eq ? ((eq.codigos_patrimonio && eq.codigos_patrimonio.length) ? eq.codigos_patrimonio : (eq.codigo_patrimonio ? [eq.codigo_patrimonio] : [])) : [];
+                const codes = eq ? codigosEquipamento(eq) : [];
                 const sel = unidadesSel[it.id] ?? (it.unidades_codigos ?? []);
                 const shown = sel.length ? sel : codes;
                 return (
