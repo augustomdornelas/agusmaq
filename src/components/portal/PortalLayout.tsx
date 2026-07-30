@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, ClipboardList, Wrench, FolderTree, Users, Hammer, BarChart3, Settings, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, ClipboardList, FileText, Wrench, FolderTree, Users, Hammer, BarChart3, Settings, LogOut, Menu, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import logoNegativo from "@/assets/agusmaq-logo-negativo.png";
 import { signOutUser } from "@/lib/portal/store";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const items = [
   { to: "/portal/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/portal/alugueis", label: "Aluguéis", icon: ClipboardList },
+  { to: "/portal/orcamentos", label: "Orçamentos", icon: FileText },
   { to: "/portal/equipamentos", label: "Equipamentos", icon: Wrench },
   { to: "/portal/categorias", label: "Categorias", icon: FolderTree },
   { to: "/portal/clientes", label: "Clientes", icon: Users },

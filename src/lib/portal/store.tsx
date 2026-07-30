@@ -1,9 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type {
-  Aluguel, AluguelItem, Categoria, Cliente, ConfiguracoesEmpresa, Empresa, Equipamento, Local, Manutencao, ManutencaoAnexo, Pagamento, Usuario, UUID,
+  Aluguel, AluguelItem, Categoria, Cliente, ConfiguracoesEmpresa, Empresa, Equipamento, Local, Manutencao, ManutencaoAnexo,
+  Orcamento, OrcamentoHistoricoEntry, OrcamentoItem, OrcamentoStatus, Pagamento, Usuario, UUID,
 } from "./types";
 import { todayISO } from "./format";
+import { computeItemTotal, computeOrcamentoTotals, type ItemCalcInput } from "./orcamentoCalc";
 
 export const FOTOS_BUCKET = "equipamentos";
 export const MANUTENCOES_ANEXOS_BUCKET = "manutencoes-anexos";
@@ -14,6 +16,7 @@ interface DBState {
   equipamentos: Equipamento[];
   clientes: Cliente[];
   alugueis: Aluguel[];
+  orcamentos: Orcamento[];
   pagamentos: Pagamento[];
   manutencoes: Manutencao[];
   locais: Local[];
@@ -28,7 +31,7 @@ const EMPTY_CONFIG: ConfiguracoesEmpresa = {
 };
 
 const EMPTY: DBState = {
-  categorias: [], equipamentos: [], clientes: [], alugueis: [], pagamentos: [], manutencoes: [], locais: [], usuarios: [],
+  categorias: [], equipamentos: [], clientes: [], alugueis: [], orcamentos: [], pagamentos: [], manutencoes: [], locais: [], usuarios: [],
   empresa: { nome: "Agusmaq Locações e Equipamentos", telefone: "", email: "", endereco: "Agudos, SP" },
   configEmpresa: EMPTY_CONFIG,
 };
@@ -117,6 +120,24 @@ type NovoAluguelInput = {
 type NovoEquipamento = Omit<Equipamento, "id" | "created_at" | "updated_at" | "valor_compra" | "data_compra" | "local_base_id" | "local_atual_id" | "exibir_catalogo"> &
   Partial<Pick<Equipamento, "valor_compra" | "data_compra" | "local_base_id" | "local_atual_id" | "exibir_catalogo">>;
 
+type NovoOrcamentoInput = {
+  id?: UUID;
+  cliente_id: UUID;
+  status: OrcamentoStatus;
+  data_emissao?: string;
+  data_validade?: string;
+  data_inicio_periodo: string;
+  data_fim_periodo: string;
+  quantidade_dias: number;
+  tipo_cobranca: Orcamento["tipo_cobranca"];
+  desconto_tipo: Orcamento["desconto_tipo"];
+  desconto_valor: number;
+  valor_frete: number;
+  condicoes_pagamento?: string;
+  observacoes?: string;
+  itens: Omit<OrcamentoItem, "id" | "orcamento_id" | "valor_total">[];
+};
+
 type NovaManutencaoInput = Omit<Manutencao, "id" | "created_at" | "updated_at" | "custo" | "anexos" | "tipo" | "oficina" | "custo_pecas" | "custo_mao_obra"> &
   Partial<Pick<Manutencao, "custo" | "anexos" | "tipo" | "oficina" | "custo_pecas" | "custo_mao_obra">>;
 
@@ -150,6 +171,12 @@ interface StoreCtx {
   updateAluguelStatus: (id: UUID, status: Aluguel["status"], data_devolucao_real?: string | null) => Promise<void>;
   cancelarAluguel: (id: UUID) => Promise<void>;
   devolverAluguel: (id: UUID, data?: string) => Promise<void>;
+  saveOrcamento: (data: NovoOrcamentoInput) => Promise<Orcamento>;
+  updateOrcamentoStatus: (id: UUID, status: OrcamentoStatus, motivo_recusa?: string) => Promise<void>;
+  duplicarOrcamento: (id: UUID) => Promise<Orcamento>;
+  arquivarOrcamento: (id: UUID) => Promise<void>;
+  deleteOrcamento: (id: UUID) => Promise<void>;
+  vincularAluguelAoOrcamento: (orcamentoId: UUID, aluguelId: UUID) => Promise<void>;
   addPagamento: (p: Omit<Pagamento, "id" | "created_at">) => Promise<Pagamento>;
   addManutencao: (m: NovaManutencaoInput) => Promise<Manutencao>;
   concluirManutencao: (id: UUID, data_fim: string, custo: number) => Promise<void>;
@@ -169,12 +196,14 @@ function must<T>(r: { data: T | null; error: any }): T {
 }
 
 async function fetchAll(): Promise<DBState> {
-  const [cats, eqs, cls, als, its, pgs, mns, locs, emp, cfg, prof, roles] = await Promise.all([
+  const [cats, eqs, cls, als, its, orcs, orcIts, pgs, mns, locs, emp, cfg, prof, roles] = await Promise.all([
     supabase.from("categorias").select("*").order("ordem"),
     supabase.from("equipamentos").select("*").order("nome"),
     supabase.from("clientes").select("*").order("nome_razao_social"),
     supabase.from("alugueis").select("*").order("created_at", { ascending: false }),
     supabase.from("aluguel_itens").select("*"),
+    (supabase.from as any)("orcamentos").select("*").order("created_at", { ascending: false }),
+    (supabase.from as any)("orcamento_itens").select("*").order("ordem"),
     supabase.from("pagamentos").select("*"),
     supabase.from("manutencoes").select("*").order("data_inicio", { ascending: false }),
     supabase.from("locais_equipamentos").select("*").order("nome"),
@@ -190,6 +219,18 @@ async function fetchAll(): Promise<DBState> {
     itensByAluguel.set(it.aluguel_id, arr);
   }
   const alugueis = (als.data ?? []).map(a => ({ ...(a as any), itens: itensByAluguel.get(a.id) ?? [] })) as Aluguel[];
+
+  const itensByOrcamento = new Map<string, OrcamentoItem[]>();
+  for (const it of ((orcIts as any).data ?? [])) {
+    const arr = itensByOrcamento.get(it.orcamento_id) ?? [];
+    arr.push(it as any);
+    itensByOrcamento.set(it.orcamento_id, arr);
+  }
+  const orcamentos = (((orcs as any).data ?? []) as any[]).map(o => ({
+    ...o,
+    historico_status: Array.isArray(o.historico_status) ? o.historico_status : [],
+    itens: itensByOrcamento.get(o.id) ?? [],
+  })) as Orcamento[];
   const usuarios: Usuario[] = (prof.data ?? []).map((p: any) => ({
     id: p.id, email: p.email, nome: p.nome,
     ativo: (roles.data ?? []).some((r: any) => r.user_id === p.id && r.role === "admin"),
@@ -206,6 +247,7 @@ async function fetchAll(): Promise<DBState> {
     equipamentos,
     clientes: (cls.data ?? []) as Cliente[],
     alugueis,
+    orcamentos,
     pagamentos: (pgs.data ?? []) as Pagamento[],
     manutencoes: (mns.data ?? []) as unknown as Manutencao[],
     locais: (locs.data ?? []) as Local[],
@@ -387,6 +429,116 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
       await reload();
     },
 
+    saveOrcamento: async (data) => {
+      const itensCalc: ItemCalcInput[] = data.itens.map(i => ({
+        quantidade: i.quantidade, valor_unitario: i.valor_unitario,
+        desconto_tipo: i.desconto_tipo, desconto_valor: i.desconto_valor,
+      }));
+      const { subtotal, valor_desconto, valor_total } = computeOrcamentoTotals(
+        itensCalc, data.desconto_tipo, data.desconto_valor, data.valor_frete,
+      );
+      const existente = data.id ? db.orcamentos.find(o => o.id === data.id) : undefined;
+      const historico: OrcamentoHistoricoEntry[] = existente
+        ? (existente.historico_status.length && existente.historico_status[existente.historico_status.length - 1].status === data.status
+            ? existente.historico_status
+            : [...existente.historico_status, { status: data.status, data: todayISO() }])
+        : [{ status: data.status, data: todayISO() }];
+      const payload: any = {
+        cliente_id: data.cliente_id,
+        status: data.status,
+        data_inicio_periodo: data.data_inicio_periodo,
+        data_fim_periodo: data.data_fim_periodo,
+        quantidade_dias: data.quantidade_dias,
+        tipo_cobranca: data.tipo_cobranca,
+        desconto_tipo: data.desconto_tipo,
+        desconto_valor: data.desconto_valor || 0,
+        valor_frete: data.valor_frete || 0,
+        subtotal, valor_desconto, valor_total,
+        condicoes_pagamento: data.condicoes_pagamento || "",
+        observacoes: data.observacoes || "",
+        historico_status: historico,
+      };
+      if (data.data_emissao) payload.data_emissao = data.data_emissao;
+      if (data.data_validade) payload.data_validade = data.data_validade;
+      if (data.status === "aprovado" || data.status === "recusado") {
+        if (!existente || existente.status !== data.status) payload.data_decisao = todayISO();
+      }
+
+      let orcId: string;
+      let created: any;
+      if (data.id) {
+        created = must(await (supabase.from as any)("orcamentos").update(payload).eq("id", data.id).select().single());
+        orcId = data.id;
+        await (supabase.from as any)("orcamento_itens").delete().eq("orcamento_id", orcId);
+      } else {
+        created = must(await (supabase.from as any)("orcamentos").insert(payload).select().single());
+        orcId = created.id;
+      }
+      const itensRows = data.itens.map((i, idx) => ({
+        orcamento_id: orcId, equipamento_id: i.equipamento_id, descricao: i.descricao,
+        quantidade: i.quantidade, valor_unitario: i.valor_unitario,
+        desconto_tipo: i.desconto_tipo, desconto_valor: i.desconto_valor,
+        valor_total: computeItemTotal(i), ordem: i.ordem ?? idx,
+      }));
+      if (itensRows.length) must(await (supabase.from as any)("orcamento_itens").insert(itensRows).select());
+      await reload();
+      return { ...created, itens: [] } as Orcamento;
+    },
+    updateOrcamentoStatus: async (id, status, motivo_recusa) => {
+      const o = db.orcamentos.find(x => x.id === id);
+      const historico: OrcamentoHistoricoEntry[] = o
+        ? (o.historico_status.length && o.historico_status[o.historico_status.length - 1].status === status
+            ? o.historico_status
+            : [...o.historico_status, { status, data: todayISO() }])
+        : [{ status, data: todayISO() }];
+      const patch: any = { status, historico_status: historico };
+      if (status === "aprovado" || status === "recusado") patch.data_decisao = todayISO();
+      if (status === "recusado") patch.motivo_recusa = motivo_recusa || "";
+      if (status === "enviado") patch.motivo_recusa = "";
+      must(await (supabase.from as any)("orcamentos").update(patch).eq("id", id).select().single());
+      await reload();
+    },
+    duplicarOrcamento: async (id) => {
+      const o = db.orcamentos.find(x => x.id === id);
+      if (!o) throw new Error("Orçamento não encontrado.");
+      const payload: any = {
+        cliente_id: o.cliente_id, status: "rascunho",
+        data_inicio_periodo: o.data_inicio_periodo, data_fim_periodo: o.data_fim_periodo,
+        quantidade_dias: o.quantidade_dias, tipo_cobranca: o.tipo_cobranca,
+        desconto_tipo: o.desconto_tipo, desconto_valor: o.desconto_valor, valor_frete: o.valor_frete,
+        subtotal: o.subtotal, valor_desconto: o.valor_desconto, valor_total: o.valor_total,
+        condicoes_pagamento: o.condicoes_pagamento, observacoes: o.observacoes,
+        historico_status: [{ status: "rascunho", data: todayISO() }],
+      };
+      const created = must(await (supabase.from as any)("orcamentos").insert(payload).select().single()) as any;
+      const itensRows = o.itens.map((i, idx) => ({
+        orcamento_id: created.id, equipamento_id: i.equipamento_id, descricao: i.descricao,
+        quantidade: i.quantidade, valor_unitario: i.valor_unitario,
+        desconto_tipo: i.desconto_tipo, desconto_valor: i.desconto_valor,
+        valor_total: i.valor_total, ordem: i.ordem ?? idx,
+      }));
+      if (itensRows.length) must(await (supabase.from as any)("orcamento_itens").insert(itensRows).select());
+      await reload();
+      return { ...created, itens: [] } as Orcamento;
+    },
+    arquivarOrcamento: async (id) => {
+      const { error } = await (supabase.from as any)("orcamentos").update({ arquivado: true }).eq("id", id);
+      if (error) throw new Error(error.message);
+      await reload();
+    },
+    deleteOrcamento: async (id) => {
+      const o = db.orcamentos.find(x => x.id === id);
+      if (o?.aluguel_id) throw new Error("Este orçamento já gerou um aluguel — não pode ser excluído. Arquive-o em vez disso.");
+      const { error } = await (supabase.from as any)("orcamentos").delete().eq("id", id);
+      if (error) throw new Error(error.message);
+      await reload();
+    },
+    vincularAluguelAoOrcamento: async (orcamentoId, aluguelId) => {
+      const { error } = await (supabase.from as any)("orcamentos").update({ aluguel_id: aluguelId }).eq("id", orcamentoId);
+      if (error) throw new Error(error.message);
+      await reload();
+    },
+
     addPagamento: async (p) => {
       const row = must(await supabase.from("pagamentos").insert(p).select().single()) as any;
       const al = db.alugueis.find(a => a.id === p.aluguel_id);
@@ -496,6 +648,25 @@ export function isAtrasado(a: Aluguel, today = todayISO()): boolean {
 }
 export function displayStatus(a: Aluguel): Aluguel["status"] {
   return isAtrasado(a) ? "atrasado" : a.status;
+}
+
+// Orçamentos: "expirado" é calculado na tela, nunca gravado no banco.
+export function isOrcamentoExpirado(o: Orcamento, today = todayISO()): boolean {
+  return o.status === "enviado" && o.data_validade < today;
+}
+export function displayOrcamentoStatus(o: Orcamento): Orcamento["status"] | "expirado" {
+  return isOrcamentoExpirado(o) ? "expirado" : o.status;
+}
+
+export interface ClienteOrcamentoStats {
+  total_orcado: number;
+  total_aprovado: number;
+}
+export function computeClienteOrcamentoStats(clienteId: string, orcamentos: Orcamento[]): ClienteOrcamentoStats {
+  const dele = orcamentos.filter(o => o.cliente_id === clienteId);
+  const total_orcado = dele.reduce((s, o) => s + Number(o.valor_total || 0), 0);
+  const total_aprovado = dele.filter(o => o.status === "aprovado").reduce((s, o) => s + Number(o.valor_total || 0), 0);
+  return { total_orcado, total_aprovado };
 }
 
 // Estatísticas por equipamento

@@ -4,15 +4,17 @@ import { toast } from "sonner";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useStore } from "@/lib/portal/store";
 import { money, todayISO, addDays, maskCpfCnpj, maskPhone } from "@/lib/portal/format";
+import { computeItemTotal } from "@/lib/portal/orcamentoCalc";
 import type { Cliente, TipoCobranca } from "@/lib/portal/types";
 import { ArrowLeft, ArrowRight, Check, Plus, Search, Trash2, X, UserPlus } from "lucide-react";
 
-interface Search { clienteId?: string; equipId?: string }
+interface Search { clienteId?: string; equipId?: string; orcamentoId?: string }
 
 export const Route = createFileRoute("/portal/alugueis/novo")({
   validateSearch: (s: Record<string, unknown>): Search => ({
     clienteId: typeof s.clienteId === "string" ? s.clienteId : undefined,
     equipId: typeof s.equipId === "string" ? s.equipId : undefined,
+    orcamentoId: typeof s.orcamentoId === "string" ? s.orcamentoId : undefined,
   }),
   head: () => ({ meta: [{ title: "Novo aluguel — Portal Agusmaq" }, { name: "robots", content: "noindex, nofollow" }] }),
   component: NovoAluguelWizard,
@@ -21,22 +23,32 @@ export const Route = createFileRoute("/portal/alugueis/novo")({
 type Item = { equipamento_id: string; quantidade: number; tipo_periodo: TipoCobranca; valor_unitario: number };
 
 function NovoAluguelWizard() {
-  const { clienteId: initCli, equipId } = Route.useSearch();
-  const { db, addCliente, saveAluguel } = useStore();
+  const { clienteId: initCli, equipId, orcamentoId } = Route.useSearch();
+  const { db, addCliente, saveAluguel, vincularAluguelAoOrcamento } = useStore();
   const nav = useNavigate();
-  const [step, setStep] = useState(1);
-  const [clienteId, setClienteId] = useState(initCli ?? "");
+  const orcamento = orcamentoId ? db.orcamentos.find(o => o.id === orcamentoId) ?? null : null;
+
+  const [step, setStep] = useState(orcamento && orcamento.cliente_id ? 4 : 1);
+  const [clienteId, setClienteId] = useState(orcamento?.cliente_id ?? initCli ?? "");
   const [itens, setItens] = useState<Item[]>(() => {
+    if (orcamento) {
+      return orcamento.itens.map(it => ({
+        equipamento_id: it.equipamento_id,
+        quantidade: it.quantidade,
+        tipo_periodo: orcamento.tipo_cobranca,
+        valor_unitario: it.quantidade > 0 ? computeItemTotal(it) / it.quantidade : it.valor_unitario,
+      }));
+    }
     if (equipId) {
       const e = db.equipamentos.find(x => x.id === equipId);
       if (e) return [{ equipamento_id: e.id, quantidade: 1, tipo_periodo: "diaria", valor_unitario: Number(e.valor_diaria) }];
     }
     return [];
   });
-  const [dataInicio, setDataInicio] = useState(todayISO());
-  const [dataFim, setDataFim] = useState(addDays(todayISO(), 1));
-  const [desconto, setDesconto] = useState(0);
-  const [observacoes, setObservacoes] = useState("");
+  const [dataInicio, setDataInicio] = useState(orcamento?.data_inicio_periodo ?? todayISO());
+  const [dataFim, setDataFim] = useState(orcamento?.data_fim_periodo ?? addDays(todayISO(), 1));
+  const [desconto, setDesconto] = useState(orcamento?.valor_desconto ?? 0);
+  const [observacoes, setObservacoes] = useState(orcamento?.observacoes ?? "");
 
   const cliente = db.clientes.find(c => c.id === clienteId) ?? null;
 
@@ -70,9 +82,11 @@ function NovoAluguelWizard() {
       const a = await saveAluguel({
         cliente_id: clienteId, data_inicio: dataInicio, data_prevista_devolucao: dataFim,
         tipo_cobranca: tipo_predom, status: "ativo", desconto,
+        valor_frete: orcamento?.valor_frete ?? 0,
         observacoes,
         itens: itens.map(i => ({ equipamento_id: i.equipamento_id, quantidade: i.quantidade, valor_unitario: i.valor_unitario })),
       });
+      if (orcamentoId) await vincularAluguelAoOrcamento(orcamentoId, a.id);
       toast.success("Aluguel criado!");
       nav({ to: "/portal/alugueis/$id/termo", params: { id: a.id } });
     } catch (e: any) { toast.error(e.message); }
@@ -204,7 +218,7 @@ function StepCliente({ cliente, setClienteId, onNovo, onNext, clientes }: { clie
   );
 }
 
-function NovoClienteModal({ onClose, onSave }: { onClose: () => void; onSave: (c: Omit<Cliente, "id" | "created_at" | "updated_at">) => Promise<void> }) {
+export function NovoClienteModal({ onClose, onSave }: { onClose: () => void; onSave: (c: Omit<Cliente, "id" | "created_at" | "updated_at">) => Promise<void> }) {
   const [f, setF] = useState<Omit<Cliente, "id" | "created_at" | "updated_at">>({
     tipo: "pessoa_fisica", nome_razao_social: "", cpf_cnpj: "", telefone_whatsapp: "", email: "", endereco: "", cidade: "", observacoes: "",
   });

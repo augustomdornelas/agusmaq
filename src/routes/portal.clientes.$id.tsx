@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { StatusBadge } from "@/components/portal/StatusBadge";
-import { useStore, displayStatus, computeClienteStats, isAtrasado } from "@/lib/portal/store";
+import { useStore, displayStatus, computeClienteStats, isAtrasado, displayOrcamentoStatus, computeClienteOrcamentoStats } from "@/lib/portal/store";
 import { dateBR, money, whatsappLink } from "@/lib/portal/format";
 import { ArrowLeft, MessageCircle, Plus, FileText } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -21,6 +21,8 @@ function ClienteDetail() {
   const alugueis = db.alugueis.filter(a => a.cliente_id === id).sort((a, b) => b.data_inicio.localeCompare(a.data_inicio));
   const stats = computeClienteStats(id, db.alugueis, db.equipamentos);
   const meses = stats.por_mes.map(m => ({ ...m, label: m.mes.slice(5) + "/" + m.mes.slice(2, 4) }));
+  const orcamentos = db.orcamentos.filter(o => o.cliente_id === id && !o.arquivado).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const orcStats = computeClienteOrcamentoStats(id, db.orcamentos);
 
   return (
     <PortalLayout title={c.nome_razao_social}>
@@ -57,6 +59,8 @@ function ClienteDetail() {
             <Kpi label="Aluguéis ativos" v={String(stats.ativos)} />
             <Kpi label="Ticket médio" v={money(stats.ticket_medio)} />
             <Kpi label="Última locação" v={stats.ultima_locacao ? dateBR(stats.ultima_locacao) : "—"} />
+            <Kpi label="Total orçado" v={money(orcStats.total_orcado)} />
+            <Kpi label="Total aprovado" v={money(orcStats.total_aprovado)} />
           </div>
 
           <div className="rounded-lg bg-white p-5 shadow-sm">
@@ -87,6 +91,27 @@ function ClienteDetail() {
               </ul>
             </div>
           )}
+
+          <div className="rounded-lg bg-white p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-[#213368]">Orçamentos</h3>
+            {orcamentos.length === 0 ? <p className="text-sm text-[#6E7280]">Nenhum orçamento registrado ainda.</p> : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-xs text-[#6E7280]"><tr><th className="py-2">Número</th><th>Emissão</th><th className="text-right">Valor</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {orcamentos.map(o => (
+                      <tr key={o.id} className="border-t">
+                        <td className="py-2 font-mono text-xs"><Link to="/portal/orcamentos/$id" params={{ id: o.id }} className="hover:underline">{o.numero}</Link></td>
+                        <td>{dateBR(o.data_emissao)}</td>
+                        <td className="text-right">{money(o.valor_total)}</td>
+                        <td><Link to="/portal/orcamentos/$id" params={{ id: o.id }}><StatusBadge status={displayOrcamentoStatus(o)} /></Link></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
           <div className="rounded-lg bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-[#213368]">Histórico completo</h3>

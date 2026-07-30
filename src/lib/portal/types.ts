@@ -9,6 +9,11 @@ export type StatusPagamento = "pendente" | "parcial" | "pago";
 export type ManutencaoStatus = "aberta" | "em_andamento" | "concluida";
 export type ManutencaoTipo = "preventiva" | "corretiva" | "emergencial";
 export type LocalTipo = "Base" | "Almoxarifado" | "Obra";
+export type DescontoTipo = "percentual" | "valor";
+// "expirado" não é gravado no banco — é calculado na tela (enviado + validade vencida),
+// igual ao "atrasado" dos aluguéis.
+export type OrcamentoStatus = "rascunho" | "enviado" | "aprovado" | "recusado";
+export type OrcamentoStatusDisplay = OrcamentoStatus | "expirado";
 
 export interface Categoria {
   id: UUID;
@@ -125,6 +130,53 @@ export interface Manutencao {
   custo: number;
   status: ManutencaoStatus;
   anexos: ManutencaoAnexo[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrcamentoHistoricoEntry {
+  status: OrcamentoStatus;
+  data: string;
+}
+
+export interface OrcamentoItem {
+  id: UUID;
+  orcamento_id: UUID;
+  equipamento_id: UUID;
+  descricao: string;
+  quantidade: number;
+  valor_unitario: number;
+  desconto_tipo: DescontoTipo;
+  desconto_valor: number;
+  valor_total: number;
+  ordem: number;
+}
+
+export interface Orcamento {
+  id: UUID;
+  numero: string;
+  cliente_id: UUID;
+  status: OrcamentoStatus;
+  data_emissao: string;
+  data_validade: string;
+  data_inicio_periodo: string;
+  data_fim_periodo: string;
+  quantidade_dias: number;
+  tipo_cobranca: TipoCobranca;
+  desconto_tipo: DescontoTipo;
+  desconto_valor: number;
+  valor_frete: number;
+  subtotal: number;
+  valor_desconto: number;
+  valor_total: number;
+  condicoes_pagamento: string;
+  observacoes: string;
+  motivo_recusa: string;
+  data_decisao: string | null;
+  historico_status: OrcamentoHistoricoEntry[];
+  aluguel_id: UUID | null;
+  arquivado: boolean;
+  itens: OrcamentoItem[];
   created_at: string;
   updated_at: string;
 }

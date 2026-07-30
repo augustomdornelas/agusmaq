@@ -13,6 +13,12 @@ const map: Record<string, { label: string; cls: string }> = {
   devolvido: { label: "Devolvido", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
   atrasado: { label: "Atrasado", cls: "bg-red-100 text-red-800 border-red-200" },
   cancelado: { label: "Cancelado", cls: "bg-gray-200 text-gray-700 border-gray-300" },
+  // orçamentos
+  rascunho: { label: "Rascunho", cls: "bg-gray-200 text-gray-700 border-gray-300" },
+  enviado: { label: "Enviado", cls: "bg-blue-100 text-blue-800 border-blue-200" },
+  aprovado: { label: "Aprovado", cls: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  recusado: { label: "Recusado", cls: "bg-red-100 text-red-800 border-red-200" },
+  expirado: { label: "Expirado", cls: "bg-amber-100 text-amber-800 border-amber-200" },
   // pagamento
   pendente: { label: "Pendente", cls: "bg-red-100 text-red-800 border-red-200" },
   parcial: { label: "Parcial", cls: "bg-amber-100 text-amber-800 border-amber-200" },
