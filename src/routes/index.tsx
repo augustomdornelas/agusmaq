@@ -249,21 +249,21 @@ function Hero() {
       <div className="container-x relative grid gap-12 py-20 md:py-28 lg:grid-cols-12 lg:gap-8">
         <div className="lg:col-span-7">
           <p className="reveal text-xs font-semibold tracking-[0.22em] text-[#f37032]">
-            LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS · AGUDOS, SP
+            LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS · AGUDOS E REGIÃO
           </p>
           <h1 className="reveal mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
-            Equipamento de quem entende de obra.
+            Sua obra não para por falta de máquina.
           </h1>
           <p className="reveal mt-6 max-w-2xl text-base leading-relaxed text-white/80 md:text-lg">
-            Máquinas revisadas antes de cada locação, com entrega em Agudos e região — para
-            construtoras, indústrias e pessoas físicas.
+            Mais de 130 equipamentos prontos para retirada ou entrega na obra. Revisados antes
+            de cada locação, com diária, semanal ou mensal.
           </p>
           <div className="reveal mt-9 flex flex-col gap-3 sm:flex-row">
             <BtnPrimary href={WHATSAPP_URL}>
               <IconWhatsapp size={18} />
               Pedir orçamento no WhatsApp
             </BtnPrimary>
-            <BtnOutlineWhite href="#equipamentos">Ver equipamentos</BtnOutlineWhite>
+            <BtnOutlineWhite href="/catalogo">Ver catálogo</BtnOutlineWhite>
           </div>
         </div>
 
@@ -271,14 +271,15 @@ function Hero() {
         <div className="reveal lg:col-span-5">
           <div className="relative rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
             <div className="absolute -top-3 left-8 rounded-full bg-[#f37032] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
-              Locação
+              Atendimento rápido
             </div>
             <div className="rounded-xl bg-white/5 p-5">
               <p className="text-sm font-semibold text-white">
-                “Fechou hoje, retira amanhã.”
+                Precisou hoje, resolve hoje.
               </p>
               <p className="mt-2 text-xs text-white/70">
-                É esse o jeito Agusmaq de resolver. Sem letra miúda, sem espera de semana.
+                Responde no WhatsApp, confirma disponibilidade e valor na hora. Sem proposta
+                que demora três dias.
               </p>
             </div>
             <ul className="mt-6 space-y-3 text-sm text-white/85">
@@ -288,11 +289,11 @@ function Hero() {
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#f37032]" />
-                Entrega e retirada na obra
+                Entrega e retirada na sua obra
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#f37032]" />
-                Diária, semanal ou mensal
+                Contrato simples, sem letra miúda
               </li>
             </ul>
           </div>
@@ -309,16 +310,16 @@ function Hero() {
 function TrustStrip() {
   const items = [
     {
-      title: "Máquina revisada",
-      body: "Manutenção feita por quem depende dela na própria obra.",
+      title: "Máquina que funciona",
+      body: "Revisão e manutenção feitas por quem também depende dela na própria obra.",
     },
     {
-      title: "Entrega e retirada",
-      body: "Levamos e buscamos na sua obra, em Agudos e região.",
+      title: "Entrega na obra",
+      body: "Levamos e buscamos em Agudos e região. Você não perde meio dia buscando equipamento.",
     },
     {
-      title: "Contrato simples",
-      body: "Diária, semanal ou mensal, sem letra miúda.",
+      title: "Sem burocracia",
+      body: "Contrato de uma página, diária, semanal ou mensal. Combina no WhatsApp e retira.",
     },
   ];
   return (
@@ -346,23 +347,18 @@ function HowItWorks() {
   const steps = [
     {
       n: "01",
-      title: "Escolha o equipamento",
-      body: "Diz o que você precisa — betoneira, andaime, gerador, ferramenta. A gente confere o que tem disponível.",
+      title: "Escolha no catálogo",
+      body: "Veja o que temos disponível ou chame direto no WhatsApp e diga o que precisa.",
     },
     {
       n: "02",
-      title: "Receba o orçamento pelo WhatsApp",
-      body: "Com valor de diária, semana ou mês. Direto, sem passar por cinco pessoas.",
+      title: "Confirmamos na hora",
+      body: "Disponibilidade, valor e prazo respondidos na mesma conversa.",
     },
     {
       n: "03",
-      title: "Contrato e entrega",
-      body: "A máquina sai revisada e chega na obra no prazo combinado. Nota e contrato quando precisar.",
-    },
-    {
-      n: "04",
-      title: "Use e devolva",
-      body: "Terminou, a gente retira. Precisou de mais tempo, é só renovar.",
+      title: "Retire ou receba",
+      body: "Busque no depósito ou combine a entrega direto na obra.",
     },
   ];
   return (
@@ -380,7 +376,7 @@ function HowItWorks() {
           </p>
         </div>
 
-        <ol className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-14 grid gap-6 md:grid-cols-3">
           {steps.map((s) => (
             <li
               key={s.n}
@@ -496,22 +492,16 @@ function Equipment() {
 function ForWhom() {
   const cols = [
     {
-      tag: "Construtoras",
-      title: "Equipamento na hora que o cronograma aperta.",
-      body: "Contrato mensal, reposição rápida e suporte para não parar a obra.",
-      bullets: ["Contrato mensal recorrente", "Reposição ágil", "Nota fiscal e contrato"],
+      title: "Construtoras e empreiteiras",
+      body: "Frota completa para obra em andamento, com contrato mensal para quem precisa por mais tempo.",
     },
     {
-      tag: "Indústrias",
-      title: "Manutenção e paradas programadas.",
-      body: "Locação sob medida para paradas, ampliações e serviços de manutenção industrial.",
-      bullets: ["Paradas programadas", "Locação de longo prazo", "Emissão de nota e contrato"],
+      title: "Indústrias e comércio",
+      body: "Equipamento para manutenção, reforma e serviço pontual, sem imobilizar capital.",
     },
     {
-      tag: "Pessoa física",
-      title: "Aluguel por diária para reforma.",
-      body: "Serviço de fim de semana? Pega a máquina certa e devolve segunda. Simples assim.",
-      bullets: ["Diária a partir de 24h", "Retirada e devolução simples", "Sem burocracia"],
+      title: "Quem está construindo ou reformando",
+      body: "Aluga só o que precisa, pelo tempo que precisa. Sem comprar máquina que vai usar uma vez.",
     },
   ];
   return (
@@ -529,22 +519,11 @@ function ForWhom() {
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {cols.map((c) => (
             <div
-              key={c.tag}
+              key={c.title}
               className="reveal flex flex-col rounded-2xl border border-[#eef0f4] bg-white p-8 transition hover:shadow-md"
             >
-              <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[#213368] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
-                {c.tag}
-              </div>
-              <h3 className="mt-5 text-xl font-bold text-[#213368]">{c.title}</h3>
+              <h3 className="text-xl font-bold text-[#213368]">{c.title}</h3>
               <p className="mt-3 text-sm leading-relaxed text-[#6e7280]">{c.body}</p>
-              <ul className="mt-6 space-y-2.5">
-                {c.bullets.map((b) => (
-                  <li key={b} className="flex items-start gap-2.5 text-sm text-[#1a1a1a]">
-                    <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[#f37032]" />
-                    {b}
-                  </li>
-                ))}
-              </ul>
             </div>
           ))}
         </div>
@@ -634,15 +613,15 @@ function ContactCTA() {
                 Contato
               </p>
               <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#213368] md:text-5xl">
-                A sua obra não pode esperar.
+                Diz o que você precisa que a gente resolve.
               </h2>
               <p className="mt-5 max-w-xl text-base leading-relaxed text-[#6e7280]">
-                Fale agora pelo WhatsApp com quem entende de máquina. Orçamento no mesmo dia.
+                Chame no WhatsApp e receba o orçamento na hora.
               </p>
               <div className="mt-8">
                 <BtnPrimary href={WHATSAPP_URL}>
                   <IconWhatsapp size={18} />
-                  Pedir orçamento no WhatsApp
+                  Falar no WhatsApp
                 </BtnPrimary>
               </div>
             </div>

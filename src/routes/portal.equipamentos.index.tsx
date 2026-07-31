@@ -5,6 +5,7 @@ import { PortalLayout } from "@/components/portal/PortalLayout";
 import { StatusBadge } from "@/components/portal/StatusBadge";
 import { useStore, uploadFoto } from "@/lib/portal/store";
 import { money, dateBR, pct, normalizeSearch } from "@/lib/portal/format";
+import { compressImage } from "@/lib/portal/image";
 import { STATUS_CHART_COLORS, STATUS_LABELS, CHART_BLUE, CHART_ORANGE, CHART_GRID, CHART_AXIS } from "@/lib/portal/chartColors";
 import {
   Plus, Search, X, ChevronDown, ChevronRight, Image as ImageIcon, Upload,
@@ -24,23 +25,6 @@ export const Route = createFileRoute("/portal/equipamentos/")({
 
 const STATUSES: EquipamentoStatus[] = ["disponivel", "alugado", "manutencao", "inativo"];
 const TIPOS_LOCAL: LocalTipo[] = ["Base", "Almoxarifado", "Obra"];
-
-async function compressImage(file: File, maxSize = 1200, quality = 0.85): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, w, h);
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error("fail")), "image/jpeg", quality);
-    };
-    img.onerror = () => reject(new Error("Imagem inválida"));
-    img.src = URL.createObjectURL(file);
-  });
-}
 
 function EquipamentosPage() {
   const { db, addEquipamento, addCategoria, addLocal, updateLocal, deleteLocal } = useStore();
@@ -371,7 +355,7 @@ function EquipamentosPage() {
           onSave={async (nome) => {
             try {
               const ordem = (db.categorias.at(-1)?.ordem ?? 0) + 1;
-              await addCategoria({ nome, descricao: "", ordem, ativa: true });
+              await addCategoria({ nome, descricao: "", foto_url: "", ordem, ativa: true });
               toast.success("Grupo criado.");
               setOpenGrupo(false);
             } catch (err: any) { toast.error(err.message); }

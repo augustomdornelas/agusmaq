@@ -69,8 +69,8 @@ export async function getCurrentAuth(): Promise<AuthState | null> {
 }
 
 // --- Upload ---
-export async function uploadFoto(file: Blob, ext = "jpg"): Promise<string> {
-  const path = `${crypto.randomUUID()}.${ext}`;
+export async function uploadFoto(file: Blob, ext = "jpg", folder = ""): Promise<string> {
+  const path = `${folder ? folder.replace(/\/+$/, "") + "/" : ""}${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from(FOTOS_BUCKET).upload(path, file, {
     contentType: file.type || "image/jpeg", upsert: false,
   });

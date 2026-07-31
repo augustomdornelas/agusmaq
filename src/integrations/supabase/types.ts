@@ -132,6 +132,7 @@ export type Database = {
           ativa: boolean
           created_at: string
           descricao: string
+          foto_url: string
           id: string
           nome: string
           ordem: number
@@ -141,6 +142,7 @@ export type Database = {
           ativa?: boolean
           created_at?: string
           descricao?: string
+          foto_url?: string
           id?: string
           nome: string
           ordem?: number
@@ -150,6 +152,7 @@ export type Database = {
           ativa?: boolean
           created_at?: string
           descricao?: string
+          foto_url?: string
           id?: string
           nome?: string
           ordem?: number

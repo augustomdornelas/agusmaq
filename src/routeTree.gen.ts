@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as PortalRouteImport } from './routes/portal'
+import { Route as CatalogoIndexRouteImport } from './routes/catalogo.index'
 import { Route as CatalogoIdRouteImport } from './routes/catalogo.$id'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as PortalCategoriasRouteImport } from './routes/portal.categorias'
@@ -20,6 +21,7 @@ import { Route as PortalDashboardRouteImport } from './routes/portal.dashboard'
 import { Route as PortalLoginRouteImport } from './routes/portal.login'
 import { Route as PortalManutencoesRouteImport } from './routes/portal.manutencoes'
 import { Route as PortalRelatoriosRouteImport } from './routes/portal.relatorios'
+import { Route as CatalogoCategoriaSlugRouteImport } from './routes/catalogo.categoria.$slug'
 import { Route as PortalAlugueisIndexRouteImport } from './routes/portal.alugueis.index'
 import { Route as PortalAlugueisIdRouteImport } from './routes/portal.alugueis.$id'
 import { Route as PortalAlugueisNovoRouteImport } from './routes/portal.alugueis.novo'
@@ -46,6 +48,11 @@ const PortalRoute = PortalRouteImport.update({
   id: '/portal',
   path: '/portal',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogoIndexRoute = CatalogoIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CatalogoRoute,
 } as any)
 const CatalogoIdRoute = CatalogoIdRouteImport.update({
   id: '/$id',
@@ -86,6 +93,11 @@ const PortalRelatoriosRoute = PortalRelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
   getParentRoute: () => PortalRoute,
+} as any)
+const CatalogoCategoriaSlugRoute = CatalogoCategoriaSlugRouteImport.update({
+  id: '/categoria/$slug',
+  path: '/categoria/$slug',
+  getParentRoute: () => CatalogoRoute,
 } as any)
 const PortalAlugueisIndexRoute = PortalAlugueisIndexRouteImport.update({
   id: '/alugueis/',
@@ -154,7 +166,9 @@ export interface FileRoutesByFullPath {
   '/portal/login': typeof PortalLoginRoute
   '/portal/manutencoes': typeof PortalManutencoesRoute
   '/portal/relatorios': typeof PortalRelatoriosRoute
+  '/catalogo/': typeof CatalogoIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/catalogo/categoria/$slug': typeof CatalogoCategoriaSlugRoute
   '/portal/alugueis/$id': typeof PortalAlugueisIdRouteWithChildren
   '/portal/alugueis/novo': typeof PortalAlugueisNovoRoute
   '/portal/clientes/$id': typeof PortalClientesIdRoute
@@ -169,7 +183,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/catalogo': typeof CatalogoRouteWithChildren
   '/catalogo/$id': typeof CatalogoIdRoute
   '/portal/categorias': typeof PortalCategoriasRoute
   '/portal/configuracoes': typeof PortalConfiguracoesRoute
@@ -177,7 +190,9 @@ export interface FileRoutesByTo {
   '/portal/login': typeof PortalLoginRoute
   '/portal/manutencoes': typeof PortalManutencoesRoute
   '/portal/relatorios': typeof PortalRelatoriosRoute
+  '/catalogo': typeof CatalogoIndexRoute
   '/portal': typeof PortalIndexRoute
+  '/catalogo/categoria/$slug': typeof CatalogoCategoriaSlugRoute
   '/portal/alugueis/$id': typeof PortalAlugueisIdRouteWithChildren
   '/portal/alugueis/novo': typeof PortalAlugueisNovoRoute
   '/portal/clientes/$id': typeof PortalClientesIdRoute
@@ -202,7 +217,9 @@ export interface FileRoutesById {
   '/portal/login': typeof PortalLoginRoute
   '/portal/manutencoes': typeof PortalManutencoesRoute
   '/portal/relatorios': typeof PortalRelatoriosRoute
+  '/catalogo/': typeof CatalogoIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/catalogo/categoria/$slug': typeof CatalogoCategoriaSlugRoute
   '/portal/alugueis/$id': typeof PortalAlugueisIdRouteWithChildren
   '/portal/alugueis/novo': typeof PortalAlugueisNovoRoute
   '/portal/clientes/$id': typeof PortalClientesIdRoute
@@ -228,7 +245,9 @@ export interface FileRouteTypes {
     | '/portal/login'
     | '/portal/manutencoes'
     | '/portal/relatorios'
+    | '/catalogo/'
     | '/portal/'
+    | '/catalogo/categoria/$slug'
     | '/portal/alugueis/$id'
     | '/portal/alugueis/novo'
     | '/portal/clientes/$id'
@@ -243,7 +262,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/catalogo'
     | '/catalogo/$id'
     | '/portal/categorias'
     | '/portal/configuracoes'
@@ -251,7 +269,9 @@ export interface FileRouteTypes {
     | '/portal/login'
     | '/portal/manutencoes'
     | '/portal/relatorios'
+    | '/catalogo'
     | '/portal'
+    | '/catalogo/categoria/$slug'
     | '/portal/alugueis/$id'
     | '/portal/alugueis/novo'
     | '/portal/clientes/$id'
@@ -275,7 +295,9 @@ export interface FileRouteTypes {
     | '/portal/login'
     | '/portal/manutencoes'
     | '/portal/relatorios'
+    | '/catalogo/'
     | '/portal/'
+    | '/catalogo/categoria/$slug'
     | '/portal/alugueis/$id'
     | '/portal/alugueis/novo'
     | '/portal/clientes/$id'
@@ -317,6 +339,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal'
       preLoaderRoute: typeof PortalRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/catalogo/': {
+      id: '/catalogo/'
+      path: '/'
+      fullPath: '/catalogo/'
+      preLoaderRoute: typeof CatalogoIndexRouteImport
+      parentRoute: typeof CatalogoRoute
     }
     '/catalogo/$id': {
       id: '/catalogo/$id'
@@ -373,6 +402,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal/relatorios'
       preLoaderRoute: typeof PortalRelatoriosRouteImport
       parentRoute: typeof PortalRoute
+    }
+    '/catalogo/categoria/$slug': {
+      id: '/catalogo/categoria/$slug'
+      path: '/categoria/$slug'
+      fullPath: '/catalogo/categoria/$slug'
+      preLoaderRoute: typeof CatalogoCategoriaSlugRouteImport
+      parentRoute: typeof CatalogoRoute
     }
     '/portal/alugueis/': {
       id: '/portal/alugueis/'
@@ -456,10 +492,14 @@ declare module '@tanstack/react-router' {
 
 interface CatalogoRouteChildren {
   CatalogoIdRoute: typeof CatalogoIdRoute
+  CatalogoIndexRoute: typeof CatalogoIndexRoute
+  CatalogoCategoriaSlugRoute: typeof CatalogoCategoriaSlugRoute
 }
 
 const CatalogoRouteChildren: CatalogoRouteChildren = {
   CatalogoIdRoute: CatalogoIdRoute,
+  CatalogoIndexRoute: CatalogoIndexRoute,
+  CatalogoCategoriaSlugRoute: CatalogoCategoriaSlugRoute,
 }
 
 const CatalogoRouteWithChildren = CatalogoRoute._addFileChildren(

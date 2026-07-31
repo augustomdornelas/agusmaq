@@ -19,6 +19,7 @@ export interface Categoria {
   id: UUID;
   nome: string;
   descricao: string;
+  foto_url: string;
   ordem: number;
   ativa: boolean;
   created_at: string;
