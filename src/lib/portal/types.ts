@@ -8,6 +8,10 @@ export type FormaPagamento = "dinheiro" | "pix" | "cartao" | "boleto";
 export type StatusPagamento = "pendente" | "parcial" | "pago";
 export type ManutencaoStatus = "aberta" | "em_andamento" | "concluida";
 export type ManutencaoTipo = "preventiva" | "corretiva" | "emergencial";
+export type CondicaoDevolucao = "bom" | "avariado" | "nao_devolvido";
+// "devolvido_parcial" não é gravado no banco — é calculado na tela,
+// igual ao "atrasado" dos aluguéis e ao "expirado" dos orçamentos.
+export type AluguelStatusDisplay = AluguelStatus | "devolvido_parcial";
 export type LocalTipo = "Base" | "Almoxarifado" | "Obra";
 export type DescontoTipo = "percentual" | "valor";
 // "expirado" não é gravado no banco — é calculado na tela (enviado + validade vencida),
@@ -80,6 +84,28 @@ export interface AluguelItem {
   unidades_codigos?: string[];
 }
 
+export interface DevolucaoItem {
+  id: UUID;
+  devolucao_id: UUID;
+  aluguel_item_id: UUID;
+  quantidade: number;
+  unidades_codigos: string[];
+  condicao: CondicaoDevolucao;
+  observacao: string;
+}
+
+export interface Devolucao {
+  id: UUID;
+  aluguel_id: UUID;
+  sequencia: number;
+  data: string;
+  recebido_por: string;
+  observacoes: string;
+  valor_avarias: number;
+  created_at: string;
+  itens: DevolucaoItem[];
+}
+
 export interface Aluguel {
   id: UUID;
   numero: number;
@@ -97,6 +123,7 @@ export interface Aluguel {
   status_pagamento: StatusPagamento;
   observacoes: string;
   itens: AluguelItem[];
+  devolucoes: Devolucao[];
   created_at: string;
   updated_at: string;
 }
@@ -200,6 +227,7 @@ export interface ConfiguracoesEmpresa {
   email: string;
   logo_url: string;
   texto_condicoes_termo: string;
+  texto_condicoes_devolucao: string;
   updated_at: string;
 }
 

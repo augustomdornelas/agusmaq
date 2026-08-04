@@ -53,7 +53,7 @@ export function PortalLayout({ children, title }: { children: ReactNode; title?:
   return (
     <div className="flex min-h-screen bg-[#F4F4F4]">
       {/* Sidebar desktop */}
-      <aside className="hidden md:flex md:w-64 md:flex-col bg-[#213368] text-white">
+      <aside className="hidden md:flex md:w-64 md:flex-col bg-[#213368] text-white print:hidden">
         <div className="flex h-20 items-center justify-center border-b border-white/10 px-4">
           <img src={logoNegativo} alt="Agusmaq" className="h-9" />
         </div>
@@ -72,7 +72,7 @@ export function PortalLayout({ children, title }: { children: ReactNode; title?:
 
       {/* Sidebar mobile (drawer) */}
       {open && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-40 md:hidden print:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
           <aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-[#213368] text-white">
             <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
@@ -92,11 +92,11 @@ export function PortalLayout({ children, title }: { children: ReactNode; title?:
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-white px-4 md:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-white px-4 md:px-6 print:hidden">
           <button className="md:hidden p-2" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
           <h1 className="text-base font-semibold text-[#213368]">{title ?? "Portal Agusmaq"}</h1>
         </header>
-        <main className="flex-1 p-4 md:p-6">
+        <main className="flex-1 p-4 md:p-6 print:p-0">
           {children}
         </main>
       </div>

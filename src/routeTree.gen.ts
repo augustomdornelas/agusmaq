@@ -32,6 +32,7 @@ import { Route as PortalEquipamentosIdRouteImport } from './routes/portal.equipa
 import { Route as PortalOrcamentosIndexRouteImport } from './routes/portal.orcamentos.index'
 import { Route as PortalOrcamentosIdRouteImport } from './routes/portal.orcamentos.$id'
 import { Route as PortalOrcamentosNovoRouteImport } from './routes/portal.orcamentos.novo'
+import { Route as PortalAlugueisIdDevolucaoRouteImport } from './routes/portal.alugueis.$id.devolucao'
 import { Route as PortalAlugueisIdTermoRouteImport } from './routes/portal.alugueis.$id.termo'
 
 const IndexRoute = IndexRouteImport.update({
@@ -149,6 +150,12 @@ const PortalOrcamentosNovoRoute = PortalOrcamentosNovoRouteImport.update({
   path: '/orcamentos/novo',
   getParentRoute: () => PortalRoute,
 } as any)
+const PortalAlugueisIdDevolucaoRoute =
+  PortalAlugueisIdDevolucaoRouteImport.update({
+    id: '/devolucao',
+    path: '/devolucao',
+    getParentRoute: () => PortalAlugueisIdRoute,
+  } as any)
 const PortalAlugueisIdTermoRoute = PortalAlugueisIdTermoRouteImport.update({
   id: '/termo',
   path: '/termo',
@@ -179,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/portal/clientes/': typeof PortalClientesIndexRoute
   '/portal/equipamentos/': typeof PortalEquipamentosIndexRoute
   '/portal/orcamentos/': typeof PortalOrcamentosIndexRoute
+  '/portal/alugueis/$id/devolucao': typeof PortalAlugueisIdDevolucaoRoute
   '/portal/alugueis/$id/termo': typeof PortalAlugueisIdTermoRoute
 }
 export interface FileRoutesByTo {
@@ -203,6 +211,7 @@ export interface FileRoutesByTo {
   '/portal/clientes': typeof PortalClientesIndexRoute
   '/portal/equipamentos': typeof PortalEquipamentosIndexRoute
   '/portal/orcamentos': typeof PortalOrcamentosIndexRoute
+  '/portal/alugueis/$id/devolucao': typeof PortalAlugueisIdDevolucaoRoute
   '/portal/alugueis/$id/termo': typeof PortalAlugueisIdTermoRoute
 }
 export interface FileRoutesById {
@@ -230,6 +239,7 @@ export interface FileRoutesById {
   '/portal/clientes/': typeof PortalClientesIndexRoute
   '/portal/equipamentos/': typeof PortalEquipamentosIndexRoute
   '/portal/orcamentos/': typeof PortalOrcamentosIndexRoute
+  '/portal/alugueis/$id/devolucao': typeof PortalAlugueisIdDevolucaoRoute
   '/portal/alugueis/$id/termo': typeof PortalAlugueisIdTermoRoute
 }
 export interface FileRouteTypes {
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
     | '/portal/clientes/'
     | '/portal/equipamentos/'
     | '/portal/orcamentos/'
+    | '/portal/alugueis/$id/devolucao'
     | '/portal/alugueis/$id/termo'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -282,6 +293,7 @@ export interface FileRouteTypes {
     | '/portal/clientes'
     | '/portal/equipamentos'
     | '/portal/orcamentos'
+    | '/portal/alugueis/$id/devolucao'
     | '/portal/alugueis/$id/termo'
   id:
     | '__root__'
@@ -308,6 +320,7 @@ export interface FileRouteTypes {
     | '/portal/clientes/'
     | '/portal/equipamentos/'
     | '/portal/orcamentos/'
+    | '/portal/alugueis/$id/devolucao'
     | '/portal/alugueis/$id/termo'
   fileRoutesById: FileRoutesById
 }
@@ -480,6 +493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalOrcamentosNovoRouteImport
       parentRoute: typeof PortalRoute
     }
+    '/portal/alugueis/$id/devolucao': {
+      id: '/portal/alugueis/$id/devolucao'
+      path: '/devolucao'
+      fullPath: '/portal/alugueis/$id/devolucao'
+      preLoaderRoute: typeof PortalAlugueisIdDevolucaoRouteImport
+      parentRoute: typeof PortalAlugueisIdRoute
+    }
     '/portal/alugueis/$id/termo': {
       id: '/portal/alugueis/$id/termo'
       path: '/termo'
@@ -507,10 +527,12 @@ const CatalogoRouteWithChildren = CatalogoRoute._addFileChildren(
 )
 
 interface PortalAlugueisIdRouteChildren {
+  PortalAlugueisIdDevolucaoRoute: typeof PortalAlugueisIdDevolucaoRoute
   PortalAlugueisIdTermoRoute: typeof PortalAlugueisIdTermoRoute
 }
 
 const PortalAlugueisIdRouteChildren: PortalAlugueisIdRouteChildren = {
+  PortalAlugueisIdDevolucaoRoute: PortalAlugueisIdDevolucaoRoute,
   PortalAlugueisIdTermoRoute: PortalAlugueisIdTermoRoute,
 }
 

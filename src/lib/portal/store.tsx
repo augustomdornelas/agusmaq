@@ -1,11 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type {
-  Aluguel, AluguelItem, Categoria, Cliente, ConfiguracoesEmpresa, Empresa, Equipamento, Local, Manutencao, ManutencaoAnexo,
+  Aluguel, AluguelItem, Categoria, Cliente, CondicaoDevolucao, ConfiguracoesEmpresa, Devolucao, DevolucaoItem, Empresa,
+  Equipamento, Local, Manutencao, ManutencaoAnexo,
   Orcamento, OrcamentoHistoricoEntry, OrcamentoItem, OrcamentoStatus, Pagamento, Usuario, UUID,
 } from "./types";
 import { todayISO } from "./format";
 import { computeItemTotal, computeOrcamentoTotals, type ItemCalcInput } from "./orcamentoCalc";
+import { proximaSequenciaDevolucao, saldoPorItem, totalPendente } from "./devolucaoCalc";
 
 export const FOTOS_BUCKET = "equipamentos";
 export const MANUTENCOES_ANEXOS_BUCKET = "manutencoes-anexos";
@@ -27,7 +29,7 @@ interface DBState {
 
 const EMPTY_CONFIG: ConfiguracoesEmpresa = {
   id: 1, nome_empresa: "AGUSMAQ", cnpj: "", endereco: "", cidade: "Agudos - SP",
-  telefone: "", email: "", logo_url: "", texto_condicoes_termo: "", updated_at: "",
+  telefone: "", email: "", logo_url: "", texto_condicoes_termo: "", texto_condicoes_devolucao: "", updated_at: "",
 };
 
 const EMPTY: DBState = {
@@ -120,6 +122,23 @@ type NovoAluguelInput = {
 type NovoEquipamento = Omit<Equipamento, "id" | "created_at" | "updated_at" | "valor_compra" | "data_compra" | "local_base_id" | "local_atual_id" | "exibir_catalogo"> &
   Partial<Pick<Equipamento, "valor_compra" | "data_compra" | "local_base_id" | "local_atual_id" | "exibir_catalogo">>;
 
+export interface NovaDevolucaoItemInput {
+  aluguel_item_id: UUID;
+  quantidade: number;
+  unidades_codigos?: string[];
+  condicao: CondicaoDevolucao;
+  observacao?: string;
+}
+
+export interface NovaDevolucaoInput {
+  aluguel_id: UUID;
+  data: string;
+  recebido_por?: string;
+  observacoes?: string;
+  valor_avarias?: number;
+  itens: NovaDevolucaoItemInput[];
+}
+
 type NovoOrcamentoInput = {
   id?: UUID;
   cliente_id: UUID;
@@ -170,7 +189,7 @@ interface StoreCtx {
   saveAluguel: (data: NovoAluguelInput) => Promise<Aluguel>;
   updateAluguelStatus: (id: UUID, status: Aluguel["status"], data_devolucao_real?: string | null) => Promise<void>;
   cancelarAluguel: (id: UUID) => Promise<void>;
-  devolverAluguel: (id: UUID, data?: string) => Promise<void>;
+  registrarDevolucao: (input: NovaDevolucaoInput) => Promise<Devolucao>;
   saveOrcamento: (data: NovoOrcamentoInput) => Promise<Orcamento>;
   updateOrcamentoStatus: (id: UUID, status: OrcamentoStatus, motivo_recusa?: string) => Promise<void>;
   duplicarOrcamento: (id: UUID) => Promise<Orcamento>;
@@ -196,7 +215,7 @@ function must<T>(r: { data: T | null; error: any }): T {
 }
 
 async function fetchAll(): Promise<DBState> {
-  const [cats, eqs, cls, als, its, orcs, orcIts, pgs, mns, locs, emp, cfg, prof, roles] = await Promise.all([
+  const [cats, eqs, cls, als, its, orcs, orcIts, pgs, mns, locs, emp, cfg, prof, roles, devs, devIts] = await Promise.all([
     supabase.from("categorias").select("*").order("ordem"),
     supabase.from("equipamentos").select("*").order("nome"),
     supabase.from("clientes").select("*").order("nome_razao_social"),
@@ -211,6 +230,8 @@ async function fetchAll(): Promise<DBState> {
     (supabase.from as any)("configuracoes_empresa").select("*").eq("id", 1).maybeSingle(),
     supabase.from("profiles").select("*"),
     supabase.from("user_roles").select("*"),
+    (supabase.from as any)("devolucoes").select("*"),
+    (supabase.from as any)("devolucao_itens").select("*"),
   ]);
   const itensByAluguel = new Map<string, AluguelItem[]>();
   for (const it of (its.data ?? [])) {
@@ -218,7 +239,24 @@ async function fetchAll(): Promise<DBState> {
     arr.push(it as any);
     itensByAluguel.set(it.aluguel_id, arr);
   }
-  const alugueis = (als.data ?? []).map(a => ({ ...(a as any), itens: itensByAluguel.get(a.id) ?? [] })) as Aluguel[];
+  const devItensByDevolucao = new Map<string, DevolucaoItem[]>();
+  for (const di of (((devIts as any).data ?? []) as any[])) {
+    const arr = devItensByDevolucao.get(di.devolucao_id) ?? [];
+    arr.push(di as DevolucaoItem);
+    devItensByDevolucao.set(di.devolucao_id, arr);
+  }
+  const devolucoesByAluguel = new Map<string, Devolucao[]>();
+  for (const d of (((devs as any).data ?? []) as any[])) {
+    const full = { ...d, itens: devItensByDevolucao.get(d.id) ?? [] } as Devolucao;
+    const arr = devolucoesByAluguel.get(d.aluguel_id) ?? [];
+    arr.push(full);
+    devolucoesByAluguel.set(d.aluguel_id, arr);
+  }
+  const alugueis = (als.data ?? []).map(a => ({
+    ...(a as any),
+    itens: itensByAluguel.get(a.id) ?? [],
+    devolucoes: (devolucoesByAluguel.get(a.id) ?? []).sort((x, y) => x.sequencia - y.sequencia),
+  })) as Aluguel[];
 
   const itensByOrcamento = new Map<string, OrcamentoItem[]>();
   for (const it of ((orcIts as any).data ?? [])) {
@@ -418,15 +456,66 @@ export function PortalStoreProvider({ children }: { children: ReactNode }) {
       }
       await reload();
     },
-    devolverAluguel: async (id, data) => {
-      const al = db.alugueis.find(a => a.id === id);
-      const patch: any = { status: "devolvido", data_devolucao_real: data ?? todayISO() };
-      must(await supabase.from("alugueis").update(patch).eq("id", id).select().single());
-      if (al) {
-        const ids = Array.from(new Set(al.itens.map(i => i.equipamento_id)));
-        if (ids.length) await supabase.from("equipamentos").update({ status: "disponivel" }).in("id", ids).eq("status", "alugado");
+    registrarDevolucao: async (input) => {
+      const al = db.alugueis.find(a => a.id === input.aluguel_id);
+      if (!al) throw new Error("Aluguel não encontrado.");
+      if (!input.itens.length) throw new Error("Informe ao menos um item devolvido.");
+
+      const devPayload = {
+        aluguel_id: input.aluguel_id,
+        sequencia: proximaSequenciaDevolucao(al),
+        data: input.data,
+        recebido_por: input.recebido_por || "",
+        observacoes: input.observacoes || "",
+        valor_avarias: input.valor_avarias || 0,
+      };
+      const created = must(await (supabase.from as any)("devolucoes").insert(devPayload).select().single()) as any;
+      const itensRows = input.itens.map(i => ({
+        devolucao_id: created.id,
+        aluguel_item_id: i.aluguel_item_id,
+        quantidade: i.quantidade,
+        unidades_codigos: i.unidades_codigos ?? [],
+        condicao: i.condicao,
+        observacao: i.observacao || "",
+      }));
+      must(await (supabase.from as any)("devolucao_itens").insert(itensRows).select());
+
+      // Simula o estado pós-inserção (sem esperar o reload) para calcular
+      // saldo e decidir o que liberar de volta ao estoque.
+      const novaDevolucao: Devolucao = { ...(created as any), itens: itensRows as unknown as DevolucaoItem[] };
+      const alugueisSimulados = db.alugueis.map(a =>
+        a.id === al.id ? { ...a, devolucoes: [...a.devolucoes, novaDevolucao] } : a
+      );
+      const alSimulado = alugueisSimulados.find(a => a.id === al.id)!;
+
+      if (totalPendente(alSimulado) === 0) {
+        must(await supabase.from("alugueis").update({ status: "devolvido", data_devolucao_real: input.data }).eq("id", al.id).select().single());
       }
+
+      const equipamentoIdPorItem = new Map(al.itens.map(it => [it.id, it.equipamento_id]));
+      const equipamentosEnvolvidos = Array.from(new Set(
+        input.itens.map(i => equipamentoIdPorItem.get(i.aluguel_item_id)).filter((v): v is string => !!v)
+      ));
+      const equipamentosAvariados = new Set(
+        input.itens.filter(i => i.condicao === "avariado").map(i => equipamentoIdPorItem.get(i.aluguel_item_id)).filter((v): v is string => !!v)
+      );
+
+      for (const eqId of equipamentosEnvolvidos) {
+        if (equipamentosAvariados.has(eqId)) {
+          await supabase.from("equipamentos").update({ status: "manutencao" }).eq("id", eqId);
+          continue;
+        }
+        const aindaPendenteEmOutroAluguel = alugueisSimulados.some(a =>
+          (a.status === "ativo" || a.status === "reservado") &&
+          saldoPorItem(a, db.equipamentos).some(s => s.item.equipamento_id === eqId && s.pendente > 0)
+        );
+        if (!aindaPendenteEmOutroAluguel) {
+          await supabase.from("equipamentos").update({ status: "disponivel" }).eq("id", eqId).eq("status", "alugado");
+        }
+      }
+
       await reload();
+      return { ...(created as any), itens: itensRows } as Devolucao;
     },
 
     saveOrcamento: async (data) => {

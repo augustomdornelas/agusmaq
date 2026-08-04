@@ -4,18 +4,15 @@ import SignatureCanvas from "react-signature-canvas";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { useStore } from "@/lib/portal/store";
 import { dateBR, money, codigosEquipamento } from "@/lib/portal/format";
-import { ArrowLeft, Printer, Eraser } from "lucide-react";
+import { preencherTermoLocacao } from "@/lib/portal/termoTemplate";
+import { gerarTermoLocacaoPdf } from "@/lib/portal/termoPdf";
+import { toast } from "sonner";
+import { ArrowLeft, Download, Eraser } from "lucide-react";
 
 export const Route = createFileRoute("/portal/alugueis/$id/termo")({
   head: () => ({ meta: [{ title: "Termo de locação — Portal Agusmaq" }, { name: "robots", content: "noindex, nofollow" }] }),
   component: TermoPage,
 });
-
-const TEMPLATE_DEFAULT = `Por este instrumento, de um lado [nome_empresa], inscrita no CNPJ [cnpj], com sede em [endereco_empresa], doravante denominada LOCADORA, e de outro lado [nome_cliente], inscrito(a) no CPF/CNPJ [cpf_cnpj], residente/estabelecido(a) em [endereco_cliente], [cidade_cliente], doravante denominado(a) LOCATÁRIO(A), firmam o presente termo de locação dos equipamentos listados abaixo.
-
-Período: de [data_inicio] a [data_fim] — regime [regime]. Valor total: [valor_total].
-
-O(A) LOCATÁRIO(A) se compromete a devolver os bens em perfeito estado de conservação, como atualmente se encontram, ao fim do prazo estabelecido. É vedado ao(à) LOCATÁRIO(A) transferir, sublocar, ceder ou emprestar os bens ora locados a terceiros. Em caso de dano, perda ou extravio, o(a) LOCATÁRIO(A) arcará com o custo de reparo ou reposição do equipamento.`;
 
 function TermoPage() {
   const { id } = Route.useParams();
@@ -23,6 +20,7 @@ function TermoPage() {
   const sigRef = useRef<SignatureCanvas | null>(null);
   const [sigData, setSigData] = useState<string>("");
   const [unidadesSel, setUnidadesSel] = useState<Record<string, string[]>>({});
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
   const a = db.alugueis.find(x => x.id === id);
   if (!a) return <PortalLayout title="Termo"><p>Aluguel não encontrado.</p></PortalLayout>;
@@ -37,20 +35,16 @@ function TermoPage() {
   const empresaTel = cfg.telefone || emp.telefone;
   const logo = cfg.logo_url;
 
-  const template = cfg.texto_condicoes_termo?.trim() || TEMPLATE_DEFAULT;
-  const filled = template
-    .replace(/\[numero\]/g, String(a.numero))
-    .replace(/\[nome_empresa\]/g, empresaNome)
-    .replace(/\[cnpj\]/g, empresaCnpj)
-    .replace(/\[endereco_empresa\]/g, empresaEnd)
-    .replace(/\[nome_cliente\]/g, cli?.nome_razao_social ?? "—")
-    .replace(/\[cpf_cnpj\]/g, cli?.cpf_cnpj ?? "—")
-    .replace(/\[endereco_cliente\]/g, cli?.endereco ?? "—")
-    .replace(/\[cidade_cliente\]/g, cli?.cidade ?? "—")
-    .replace(/\[data_inicio\]/g, dateBR(a.data_inicio))
-    .replace(/\[data_fim\]/g, dateBR(a.data_prevista_devolucao))
-    .replace(/\[regime\]/g, a.tipo_cobranca)
-    .replace(/\[valor_total\]/g, money(a.valor_total));
+  const filled = preencherTermoLocacao({
+    numero: a.numero,
+    empresaNome, empresaCnpj, empresaEndereco: empresaEnd,
+    cliente: cli,
+    dataInicio: a.data_inicio,
+    dataFim: a.data_prevista_devolucao,
+    regime: a.tipo_cobranca,
+    valorTotal: a.valor_total,
+    templateCustom: cfg.texto_condicoes_termo,
+  });
 
   function limpar() { sigRef.current?.clear(); setSigData(""); }
   function salvarAssinatura() {
@@ -58,12 +52,20 @@ function TermoPage() {
     if (!c || c.isEmpty()) return setSigData("");
     setSigData(c.toDataURL("image/png"));
   }
+  async function baixarPdf() {
+    setGerandoPdf(true);
+    try { await gerarTermoLocacaoPdf(a!, cli, db.equipamentos, cfg, sigData || undefined); }
+    catch (e: any) { toast.error("Falha ao gerar PDF: " + e.message); }
+    finally { setGerandoPdf(false); }
+  }
 
   return (
     <PortalLayout title={`Termo #${a.numero}`}>
       <div className="mb-3 flex items-center justify-between print:hidden">
         <Link to="/portal/alugueis/$id" params={{ id: a.id }} className="inline-flex items-center gap-1 text-sm text-[#6E7280] hover:text-[#213368]"><ArrowLeft className="h-4 w-4" /> Voltar</Link>
-        <button onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-md bg-[#F37032] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db5f22]"><Printer className="h-4 w-4" /> Imprimir / PDF</button>
+        <button onClick={baixarPdf} disabled={gerandoPdf} className="inline-flex items-center gap-2 rounded-md bg-[#F37032] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db5f22] disabled:opacity-60">
+          <Download className="h-4 w-4" /> {gerandoPdf ? "Gerando…" : "Baixar PDF"}
+        </button>
       </div>
 
       <div className="print:hidden mb-4 rounded-lg bg-white p-4 shadow-sm">

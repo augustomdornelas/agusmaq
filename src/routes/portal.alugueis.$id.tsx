@@ -3,10 +3,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { StatusBadge } from "@/components/portal/StatusBadge";
-import { useStore, displayStatus } from "@/lib/portal/store";
+import { useStore } from "@/lib/portal/store";
+import { statusDisplay } from "@/lib/portal/devolucaoCalc";
 import { dateBR, money, todayISO, whatsappLink } from "@/lib/portal/format";
-import { ArrowLeft, MessageCircle } from "lucide-react";
-import type { FormaPagamento } from "@/lib/portal/types";
+import { gerarTermoDevolucaoPdf } from "@/lib/portal/termoPdf";
+import { ArrowLeft, MessageCircle, FileText, Download } from "lucide-react";
+import type { FormaPagamento, Devolucao } from "@/lib/portal/types";
 
 export const Route = createFileRoute("/portal/alugueis/$id")({
   head: () => ({ meta: [{ title: "Aluguel — Portal Agusmaq" }, { name: "robots", content: "noindex, nofollow" }] }),
@@ -16,12 +18,13 @@ export const Route = createFileRoute("/portal/alugueis/$id")({
 function AluguelDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { db, updateAluguelStatus, cancelarAluguel, addPagamento } = useStore();
+  const { db, cancelarAluguel, addPagamento } = useStore();
   const a = db.alugueis.find(x => x.id === id);
   const [pgValor, setPgValor] = useState(0);
   const [pgForma, setPgForma] = useState<FormaPagamento>("pix");
   const [pgData, setPgData] = useState(todayISO());
   const [pgObs, setPgObs] = useState("");
+  const [pdfDevId, setPdfDevId] = useState<string | null>(null);
 
   if (!a) {
     return <PortalLayout title="Aluguel"><p>Aluguel não encontrado. <Link to="/portal/alugueis" className="underline">Voltar</Link></p></PortalLayout>;
@@ -33,11 +36,6 @@ function AluguelDetail() {
   const saldo = Math.max(0, aluguel.valor_total - pago);
 
 
-  function registrarDevolucao() {
-    if (!confirm("Confirmar devolução? Os equipamentos voltarão para 'disponível'.")) return;
-    updateAluguelStatus(aluguel.id, "devolvido");
-    toast.success("Devolução registrada.");
-  }
   function cancelar() {
     if (!confirm("Cancelar este aluguel?")) return;
     cancelarAluguel(aluguel.id);
@@ -49,6 +47,18 @@ function AluguelDetail() {
     setPgValor(0); setPgObs("");
     toast.success("Pagamento registrado.");
   }
+  async function baixarPdfDevolucao(dev: Devolucao) {
+    setPdfDevId(dev.id);
+    try { await gerarTermoDevolucaoPdf(dev, aluguel, cli, db.equipamentos, db.configEmpresa); }
+    catch (e: any) { toast.error("Falha ao gerar PDF: " + e.message); }
+    finally { setPdfDevId(null); }
+  }
+  function resumoCondicoes(dev: Devolucao): string {
+    const labels: Record<string, string> = { bom: "bom estado", avariado: "avariado", nao_devolvido: "não devolvido" };
+    const porCondicao = new Map<string, number>();
+    for (const it of dev.itens) porCondicao.set(it.condicao, (porCondicao.get(it.condicao) ?? 0) + Number(it.quantidade));
+    return Array.from(porCondicao.entries()).map(([c, q]) => `${q} ${labels[c] ?? c}`).join(", ") || "—";
+  }
 
   return (
     <PortalLayout title={`Aluguel — ${cli?.nome_razao_social ?? ""}`}>
@@ -57,7 +67,7 @@ function AluguelDetail() {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-lg bg-white p-5 shadow-sm lg:col-span-2">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <StatusBadge status={displayStatus(a)} />
+            <StatusBadge status={statusDisplay(a)} />
             <StatusBadge status={aluguel.status_pagamento} />
             {cli && <a href={whatsappLink(cli.telefone_whatsapp, `Olá ${cli.nome_razao_social}, sobre o aluguel na Agusmaq…`)} target="_blank"
               className="ml-auto inline-flex items-center gap-1 rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600">
@@ -88,8 +98,17 @@ function AluguelDetail() {
           {aluguel.observacoes && <p className="mt-3 rounded-md bg-[#F4F4F4] p-3 text-sm text-[#6E7280]">{aluguel.observacoes}</p>}
 
           <div className="mt-5 flex flex-wrap gap-2">
+            {aluguel.status !== "cancelado" && (
+              <Link to="/portal/alugueis/$id/termo" params={{ id: aluguel.id }}
+                className="inline-flex items-center gap-2 rounded-md border border-[#213368] px-4 py-2 text-sm font-semibold text-[#213368] hover:bg-[#213368]/5">
+                <FileText className="h-4 w-4" /> Termo de locação
+              </Link>
+            )}
             {aluguel.status !== "devolvido" && aluguel.status !== "cancelado" && (
-              <button onClick={registrarDevolucao} className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Registrar devolução</button>
+              <Link to="/portal/alugueis/$id/devolucao" params={{ id: aluguel.id }}
+                className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                Registrar devolução
+              </Link>
             )}
             {aluguel.status !== "cancelado" && aluguel.status !== "devolvido" && (
               <button onClick={cancelar} className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50">Cancelar aluguel</button>
@@ -121,6 +140,33 @@ function AluguelDetail() {
           </div>
         </div>
       </div>
+
+      {aluguel.devolucoes.length > 0 && (
+        <div className="mt-4 rounded-lg bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-[#213368]">Devoluções</h3>
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs text-[#6E7280]">
+              <tr><th className="py-2">Nº</th><th>Data</th><th>Itens</th><th className="text-right">Avarias</th><th></th></tr>
+            </thead>
+            <tbody>
+              {aluguel.devolucoes.map(dev => (
+                <tr key={dev.id} className="border-t">
+                  <td className="py-2 font-mono text-xs">{aluguel.numero}/{dev.sequencia}</td>
+                  <td>{dateBR(dev.data)}</td>
+                  <td className="text-[#6E7280]">{resumoCondicoes(dev)}</td>
+                  <td className="text-right">{dev.valor_avarias > 0 ? money(dev.valor_avarias) : "—"}</td>
+                  <td className="text-right">
+                    <button onClick={() => baixarPdfDevolucao(dev)} disabled={pdfDevId === dev.id}
+                      className="inline-flex items-center gap-1 text-sm font-medium text-[#6E7280] hover:text-[#213368] hover:underline disabled:opacity-60">
+                      <Download className="h-3.5 w-3.5" /> {pdfDevId === dev.id ? "Gerando…" : "PDF"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </PortalLayout>
   );
 }

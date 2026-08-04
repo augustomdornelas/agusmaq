@@ -3,9 +3,11 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { StatusBadge } from "@/components/portal/StatusBadge";
-import { useStore, displayStatus } from "@/lib/portal/store";
+import { useStore } from "@/lib/portal/store";
+import { statusDisplay } from "@/lib/portal/devolucaoCalc";
 import { dateBR, money, todayISO, addDays } from "@/lib/portal/format";
-import { Plus, Search, Trash2, X } from "lucide-react";
+import { gerarTermoLocacaoPdf } from "@/lib/portal/termoPdf";
+import { Plus, Search, Trash2, X, Download } from "lucide-react";
 import type { AluguelStatus, TipoCobranca, FormaPagamento, StatusPagamento } from "@/lib/portal/types";
 
 export const Route = createFileRoute("/portal/alugueis/")({
@@ -20,11 +22,21 @@ function AlugueisPage() {
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
   const [openForm, setOpenForm] = useState(false);
+  const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
+
+  async function baixarPdf(id: string) {
+    const a = db.alugueis.find(x => x.id === id);
+    if (!a) return;
+    setPdfLoadingId(id);
+    try { await gerarTermoLocacaoPdf(a, db.clientes.find(c => c.id === a.cliente_id), db.equipamentos, db.configEmpresa); }
+    catch (e: any) { toast.error("Falha ao gerar PDF: " + e.message); }
+    finally { setPdfLoadingId(null); }
+  }
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return db.alugueis
-      .map(a => ({ ...a, _status: displayStatus(a), _cli: db.clientes.find(c => c.id === a.cliente_id) }))
+      .map(a => ({ ...a, _status: statusDisplay(a), _cli: db.clientes.find(c => c.id === a.cliente_id) }))
       .filter(a => {
         if (q && !(a._cli?.nome_razao_social ?? "").toLowerCase().includes(q)) return false;
         if (status && a._status !== status) return false;
@@ -45,7 +57,7 @@ function AlugueisPage() {
         </div>
         <select value={status} onChange={e => setStatus(e.target.value)} className="rounded-md border bg-white px-3 py-2 text-sm">
           <option value="">Todos os status</option>
-          {["orcamento", "reservado", "ativo", "devolvido", "atrasado", "cancelado"].map(s => <option key={s} value={s}>{s}</option>)}
+          {["orcamento", "reservado", "ativo", "devolvido", "devolvido_parcial", "atrasado", "cancelado"].map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         <input type="date" value={de} onChange={e => setDe(e.target.value)} className="rounded-md border bg-white px-3 py-2 text-sm" />
         <input type="date" value={ate} onChange={e => setAte(e.target.value)} className="rounded-md border bg-white px-3 py-2 text-sm" />
@@ -87,6 +99,10 @@ function AlugueisPage() {
                 <td className="px-4 py-3"><StatusBadge status={a._status} /></td>
                 <td className="px-4 py-3"><StatusBadge status={a.status_pagamento} /></td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <button onClick={() => baixarPdf(a.id)} disabled={pdfLoadingId === a.id}
+                    className="mr-3 inline-flex items-center gap-1 text-sm font-medium text-[#6E7280] hover:text-[#213368] hover:underline disabled:opacity-60">
+                    <Download className="h-3.5 w-3.5" /> {pdfLoadingId === a.id ? "Gerando…" : "PDF"}
+                  </button>
                   <Link to="/portal/alugueis/$id/termo" params={{ id: a.id }} className="mr-3 text-sm font-medium text-[#6E7280] hover:underline">Termo</Link>
                   <Link to="/portal/alugueis/$id" params={{ id: a.id }} className="text-sm font-medium text-[#213368] hover:underline">Abrir</Link>
                 </td>

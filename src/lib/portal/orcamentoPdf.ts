@@ -4,7 +4,7 @@ import { money, dateBR } from "./format";
 import { computeItemTotal, descricaoComCodigos } from "./orcamentoCalc";
 import type { Cliente, ConfiguracoesEmpresa, Equipamento, Orcamento } from "./types";
 
-async function loadImageAsDataUrl(url: string): Promise<string | null> {
+export async function loadImageAsDataUrl(url: string): Promise<string | null> {
   if (!url) return null;
   try {
     const res = await fetch(url);

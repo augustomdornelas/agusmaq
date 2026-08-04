@@ -50,8 +50,11 @@ function ConfigPage() {
                 </label>
               </div>
             </F>
-            <F label="Texto do termo (use [numero], [nome_empresa], [cnpj], [endereco_empresa], [nome_cliente], [cpf_cnpj], [endereco_cliente], [cidade_cliente], [data_inicio], [data_fim], [regime], [valor_total])">
+            <F label="Texto do termo de locação (use [numero], [nome_empresa], [cnpj], [endereco_empresa], [nome_cliente], [cpf_cnpj], [endereco_cliente], [cidade_cliente], [data_inicio], [data_fim], [regime], [valor_total])">
               <textarea rows={8} className="w-full rounded-md border px-2 py-2 text-sm font-mono" value={c.texto_condicoes_termo} onChange={e => setC({ ...c, texto_condicoes_termo: e.target.value })} placeholder="Deixe em branco para usar o texto padrão." />
+            </F>
+            <F label="Texto do termo de devolução (use [numero], [sequencia], [nome_cliente], [data])">
+              <textarea rows={5} className="w-full rounded-md border px-2 py-2 text-sm font-mono" value={c.texto_condicoes_devolucao} onChange={e => setC({ ...c, texto_condicoes_devolucao: e.target.value })} placeholder="Deixe em branco para usar o texto padrão." />
             </F>
             <button onClick={salvar} className="rounded-md bg-[#F37032] px-4 py-2 text-sm font-semibold text-white hover:bg-[#db5f22]">Salvar configurações</button>
           </div>

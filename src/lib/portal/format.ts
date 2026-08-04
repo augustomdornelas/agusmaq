@@ -55,6 +55,18 @@ export function pct(v: number, digits = 1): string {
   return `${safe.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
 }
 
+const MESES_EXTENSO = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+];
+
+export function dateExtenso(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("T")[0].split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  return `${d} de ${MESES_EXTENSO[m - 1]} de ${y}`;
+}
+
 export function normalizeSearch(s: string): string {
   return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
