@@ -11,14 +11,30 @@ Options -MultiViews
 DirectoryIndex index.html
 
 # ---------------------------------------------------------------------------
-# 1) Roteamento: toda rota interna cai no index.html
-#    Sem isto, /catalogo e /portal/dashboard dao 404 — o Apache procura uma
-#    pasta com esse nome no disco e nao acha. O router do React resolve a rota
-#    no navegador depois que o index.html carrega.
+# 1) HTTPS e roteamento da SPA
+#
+#    ATENCAO: instale o certificado SSL no hPanel ANTES de subir este arquivo.
+#    O redirect e 301 (permanente) e o navegador guarda isso — se o certificado
+#    ainda nao existir, o visitante toma erro de certificado e continua tomando
+#    mesmo depois de voce arrumar. Enquanto estiver testando, troque R=301 por
+#    R=302 na linha do RewriteRule abaixo.
 # ---------------------------------------------------------------------------
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # Forcar HTTPS. As duas condicoes juntas evitam loop de redirect: na Hostinger
+  # o TLS termina num proxy na frente do Apache, entao %{HTTPS} chega "off" mesmo
+  # numa requisicao que ja era https — quem diz a verdade nesse caso e o header
+  # X-Forwarded-Proto. So redireciona quando os dois indicam que nao e https.
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # Roteamento: toda rota interna cai no index.html.
+  # Sem isto, /catalogo e /portal/dashboard dao 404 ao recarregar — o Apache
+  # procura uma pasta com esse nome no disco e nao acha. O router do React
+  # resolve a rota no navegador depois que o index.html carrega.
 
   # Arquivos e pastas que existem de verdade (assets, favicon.png) sao servidos
   # direto, sem reescrita.
