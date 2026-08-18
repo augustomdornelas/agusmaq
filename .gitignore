@@ -16,6 +16,12 @@ dist-ssr
 .nitro
 *.local
 
+# Credenciais de deploy (FTP da Hostinger) — NUNCA versionar.
+# Atencao: o .env deste projeto e versionado de proposito (as VITE_* sao
+# publicas e o build precisa delas), por isso nao existe regra `.env*` aqui.
+.env.deploy
+.env.deploy.*
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
