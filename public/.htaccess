@@ -1,0 +1,71 @@
+# ---------------------------------------------------------------------------
+# Agusmaq — SPA estatica servida por Apache/LiteSpeed (Hostinger compartilhada).
+#
+# Este arquivo fica em public/ e o Vite o copia para dist/client/ no build.
+# Ele precisa ficar na RAIZ de public_html, ao lado do index.html.
+# ---------------------------------------------------------------------------
+
+# MultiViews faz o Apache "adivinhar" arquivos (serve /index para /index.html)
+# e quebra o roteamento da SPA. Desligar e obrigatorio.
+Options -MultiViews
+DirectoryIndex index.html
+
+# ---------------------------------------------------------------------------
+# 1) Roteamento: toda rota interna cai no index.html
+#    Sem isto, /catalogo e /portal/dashboard dao 404 — o Apache procura uma
+#    pasta com esse nome no disco e nao acha. O router do React resolve a rota
+#    no navegador depois que o index.html carrega.
+# ---------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Arquivos e pastas que existem de verdade (assets, favicon.png) sao servidos
+  # direto, sem reescrita.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Qualquer outra URL -> index.html, com status 200.
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# 2) MIME types — evita "Failed to load module script" se o servidor devolver
+#    os .js como text/plain.
+# ---------------------------------------------------------------------------
+<IfModule mod_mime.c>
+  AddType text/javascript              .js .mjs
+  AddType text/css                     .css
+  AddType image/svg+xml                .svg
+  AddType application/json             .json
+  AddType font/woff                    .woff
+  AddType font/woff2                   .woff2
+  AddType image/webp                   .webp
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# 3) Compressao
+# ---------------------------------------------------------------------------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript
+  AddOutputFilterByType DEFLATE application/javascript application/json
+  AddOutputFilterByType DEFLATE image/svg+xml font/woff font/woff2
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# 4) Cache
+#    /assets/* tem hash no nome a cada build -> pode cachear pra sempre.
+#    O index.html NAO pode ser cacheado, senao o usuario continua vendo a
+#    versao antiga depois de um deploy novo.
+# ---------------------------------------------------------------------------
+<IfModule mod_headers.c>
+  SetEnvIf Request_URI "^/assets/" AGUSMAQ_IMMUTABLE
+  Header set Cache-Control "public, max-age=31536000, immutable" env=AGUSMAQ_IMMUTABLE
+
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>
