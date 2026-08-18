@@ -42,6 +42,15 @@ DirectoryIndex index.html
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
+  # Extensoes de codigo que NAO existem em disco: 404 de verdade, em vez do
+  # shell da SPA. Serve para scanner automatizado nao receber 200 ao sondar
+  # package.json, tsconfig.json, .env.yml e afins, e evita "soft 404" no Google.
+  #
+  # A ORDEM IMPORTA: esta regra vem DEPOIS do bloco acima, que termina com [L].
+  # Entao um arquivo real com essas extensoes (um manifest.json legitimo, por
+  # exemplo) ja foi servido e nunca chega aqui. So bloqueia o que nao existe.
+  RewriteRule \.(json|ts|tsx|md|lock|yml|yaml)$ - [R=404,L]
+
   # Qualquer outra URL -> index.html, com status 200.
   RewriteRule ^ index.html [L]
 </IfModule>
