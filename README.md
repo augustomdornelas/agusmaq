@@ -1,29 +1,45 @@
-# Welcome to your Lovable project
+# Agusmaq
 
-This project was built with [Lovable](https://lovable.dev).
+Site institucional, catálogo público de equipamentos e portal interno de gestão
+de locações da Agusmaq (Agudos, SP).
 
-## Build with Lovable
+## Stack
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+- TanStack Start (modo SPA) + TanStack Router
+- React 19 + TypeScript
+- Tailwind CSS 4 + shadcn/ui (Radix)
+- Supabase (banco, auth e storage)
+- Vite 8
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+## Desenvolvimento
 
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Requer Node 22.16.0 (ver `.nvmrc`) e npm 10.9.2.
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+npm ci
+npm run dev      # http://localhost:8080
 ```
 
-## Built with
+Outros comandos:
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+```sh
+npm run build    # gera dist/client (site estático) — ver DEPLOY-HOSTINGER.md
+npm run preview  # serve o build local
+npm run lint
+npm run format
+```
+
+## Variáveis de ambiente
+
+Lidas **no momento do build**, do arquivo `.env`:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+Elas ficam embutidas no bundle público — use apenas a chave *publishable*
+(anon). A proteção dos dados é feita por RLS no Supabase. Nunca coloque a
+service role key numa variável `VITE_*`.
+
+## Deploy
+
+Hostinger, hospedagem compartilhada. Ver [DEPLOY-HOSTINGER.md](./DEPLOY-HOSTINGER.md).
